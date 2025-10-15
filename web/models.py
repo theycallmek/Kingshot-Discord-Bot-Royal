@@ -77,7 +77,10 @@ class BearNotification(SQLModel, table=True):
     repeat_enabled: int
     repeat_minutes: int
     is_enabled: int
-    created_at: datetime
+    created_at: Optional[datetime] = None
     created_by: int
     last_notification: Optional[datetime] = None
     next_notification: Optional[datetime] = None
+
+class BearNotificationWithNickname(BearNotification):
+    created_by_nickname: Optional[str] = None

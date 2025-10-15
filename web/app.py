@@ -4,7 +4,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 from sqlmodel import create_engine, Session, select
-from .models import User, UserGiftCode, NicknameChange, FurnaceChange, AttendanceRecord, GiftCode, BearNotification
+from .models import User, UserGiftCode, NicknameChange, FurnaceChange, AttendanceRecord, GiftCode, BearNotification, BearNotificationWithNickname
 import os
 from datetime import datetime, date
 from collections import defaultdict
@@ -116,9 +116,13 @@ async def read_events(request: Request, authenticated: bool = Depends(is_authent
     events_query = beartime_session.exec(select(BearNotification)).all()
     events_map = defaultdict(list)
     for event in events_query:
-        event.created_by_nickname = user_map.get(event.created_by, "Unknown")
-        if event.next_notification:
-            events_map[event.next_notification.date()].append(event)
+        nickname = user_map.get(event.created_by, "Unknown")
+        event_with_nickname = BearNotificationWithNickname(
+            **event.model_dump(),
+            created_by_nickname=nickname
+        )
+        if event_with_nickname.next_notification:
+            events_map[event_with_nickname.next_notification.date()].append(event_with_nickname)
 
     return templates.TemplateResponse("events.html", {
         "request": request,
