@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Members - Kingshot Bot{% endblock %}
+
+{% block content %}
+<h1>Members</h1>
+<table>
+    <thead>
+        <tr>
+            <th>FID</th>
+            <th>Nickname</th>
+            <th>Furnace Level</th>
+            <th>KID</th>
+            <th>Alliance</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for user in users %}
+        <tr>
+            <td>{{ user.fid }}</td>
+            <td>{{ user.nickname }}</td>
+            <td>{{ user.furnace_lv }}</td>
+            <td>{{ user.kid }}</td>
+            <td>{{ user.alliance }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<style>
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    th, td {
+        border: 1px solid #444;
+        padding: 8px;
+        text-align: left;
+    }
+    th {
+        background-color: #333;
+    }
+</style>
+{% endblock %}

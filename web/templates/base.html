@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Kingshot Bot Dashboard{% endblock %}</title>
+    <style>
+        body {
+            background-color: #1a1a1a;
+            color: #f0f0f0;
+            font-family: sans-serif;
+            margin: 0;
+        }
+        .sidebar {
+            width: 200px;
+            background-color: #2a2a2a;
+            position: fixed;
+            height: 100%;
+            padding: 1rem;
+        }
+        .sidebar h2 {
+            margin-top: 0;
+        }
+        .sidebar ul {
+            list-style: none;
+            padding: 0;
+        }
+        .sidebar ul li a {
+            color: #f0f0f0;
+            text-decoration: none;
+            display: block;
+            padding: 0.5rem 0;
+        }
+        .sidebar ul li a:hover {
+            background-color: #333;
+        }
+        .content {
+            margin-left: 220px;
+            padding: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h2>Kingshot Bot</h2>
+        <ul>
+            <li><a href="/">Dashboard</a></li>
+            <li><a href="/members">Members</a></li>
+            <li><a href="/events">Events</a></li>
+            <li><a href="/logout">Logout</a></li>
+        </ul>
+    </div>
+    <div class="content">
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>

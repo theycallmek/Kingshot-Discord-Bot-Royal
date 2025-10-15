@@ -12,3 +12,5 @@
 !install/*
 !fonts/
 !fonts/*
+!web/
+!web/**
