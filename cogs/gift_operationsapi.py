@@ -358,12 +358,8 @@ class GiftCodeAPI:
                                             else:
                                                 response_text = await post_response.text()
                                                 self.logger.warning(f"Failed to push code {db_code}: {post_response.status}, {response_text[:200]}")
-                                                
-                                                if "invalid" in response_text.lower(): # Code was rejected as invalid by API, mark it as invalid locally
-                                                    self.logger.warning(f"Code {db_code} marked invalid by API, updating local status")
-                                                    self.cursor.execute("UPDATE gift_codes SET validation_status = 'invalid' WHERE giftcode = ?", (db_code,))
-                                                    await self._safe_commit(self.conn, "mark code invalid")
-                                                
+                                                self.logger.info(f"Code {db_code} rejected by API but keeping local validation status - API may have stale data")
+
                                                 backoff_time = await self._handle_api_error(post_response, response_text)
                                                 await asyncio.sleep(backoff_time)
                                     except Exception as e:
@@ -442,10 +438,7 @@ class GiftCodeAPI:
                             return True
                         else:
                             self.logger.warning(f"Failed to add code {giftcode} to API: {response.status}, {response_text[:200]}")
-                            if "invalid" in response_text.lower(): # Code was rejected as invalid by API, mark it as invalid locally
-                                self.logger.warning(f"Code {giftcode} marked invalid by API")
-                                self.cursor.execute("UPDATE gift_codes SET validation_status = 'invalid' WHERE giftcode = ?", (giftcode,))
-                                await self._safe_commit(self.conn, "mark code invalid")
+                            self.logger.info(f"Code {giftcode} rejected by API but keeping local validation status - API may have stale data")
                             backoff_time = await self._handle_api_error(response, response_text)
                             await asyncio.sleep(backoff_time)
                             return False

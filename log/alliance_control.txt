@@ -1,1 +1,0 @@
-2025-10-14 19:53:03,845 - alliance_control - INFO - Monitor and queue processor started successfully
