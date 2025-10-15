@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}Gift Codes{% endblock %}
+
+{% block content %}
+<h1 class="text-3xl font-bold mb-4">Gift Codes</h1>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    {% for code in all_codes %}
+    <div class="bg-gray-800 rounded-lg shadow p-4">
+        <h2 class="text-xl font-bold">{{ code.code }}</h2>
+        <p class="text-gray-400">Expires: {{ code.expiry_date.strftime('%Y-%m-%d') if code.expiry_date else 'N/A' }}</p>
+        <div class="mt-4">
+            <h3 class="text-lg font-semibold">Redeemed by:</h3>
+            <ul class="list-disc list-inside mt-2">
+                {% if redemption_map[code.code] %}
+                    {% for redemption in redemption_map[code.code] %}
+                    <li>{{ redemption.nickname }} ({{ redemption.status }})</li>
+                    {% endfor %}
+                {% else %}
+                    <li>No one yet</li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

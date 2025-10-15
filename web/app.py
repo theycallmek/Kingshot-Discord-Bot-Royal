@@ -24,11 +24,13 @@ app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 templates = Jinja2Templates(directory="web/templates")
 
 # --- Database Setup ---
-users_engine = create_engine("sqlite:///db/users.sqlite", connect_args={"check_same_thread": False})
-giftcode_engine = create_engine("sqlite:///db/giftcode.sqlite", connect_args={"check_same_thread": False})
-changes_engine = create_engine("sqlite:///db/changes.sqlite", connect_args={"check_same_thread": False})
-attendance_engine = create_engine("sqlite:///db/attendance.sqlite", connect_args={"check_same_thread": False})
-beartime_engine = create_engine("sqlite:///db/beartime.sqlite", connect_args={"check_same_thread": False})
+DB_DIR = os.path.abspath("db")
+os.makedirs(DB_DIR, exist_ok=True)
+users_engine = create_engine(f"sqlite:///{os.path.join(DB_DIR, 'users.sqlite')}", connect_args={"check_same_thread": False})
+giftcode_engine = create_engine(f"sqlite:///{os.path.join(DB_DIR, 'giftcode.sqlite')}", connect_args={"check_same_thread": False})
+changes_engine = create_engine(f"sqlite:///{os.path.join(DB_DIR, 'changes.sqlite')}", connect_args={"check_same_thread": False})
+attendance_engine = create_engine(f"sqlite:///{os.path.join(DB_DIR, 'attendance.sqlite')}", connect_args={"check_same_thread": False})
+beartime_engine = create_engine(f"sqlite:///{os.path.join(DB_DIR, 'beartime.sqlite')}", connect_args={"check_same_thread": False})
 
 
 # Enable WAL mode
