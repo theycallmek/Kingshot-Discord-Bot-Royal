@@ -265,3 +265,8 @@ tbody tr:hover {
     font-weight: bold;
     margin-right: 0.5em;
 }
+
+.event-details {
+    line-height: 1.2;
+    margin-top: 0.3rem;
+}
