@@ -3,30 +3,51 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 from sqlmodel import create_engine, Session, select
-from .models import User
+from .models import User, UserGiftCode, NicknameChange, FurnaceChange, AttendanceRecord
 import os
+from datetime import datetime
 
 app = FastAPI()
 
-# This is a temporary secret key. In a real application, this should be
-# loaded from a secure configuration.
-app.add_middleware(SessionMiddleware, secret_key="your-secret-key")
+# --- Configuration ---
+SECRET_KEY = os.environ.get("SECRET_KEY", "your-secret-key")
+WEB_DASHBOARD_PASSWORD = os.environ.get("WEB_DASHBOARD_PASSWORD", "password")
+
+app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
 templates = Jinja2Templates(directory="web/templates")
 
-# This will be replaced with a value from the bot's configuration.
-WEB_DASHBOARD_PASSWORD = "password"
-
 # --- Database Setup ---
-DATABASE_URL = "sqlite:///db/users.sqlite"
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+users_engine = create_engine("sqlite:///db/users.sqlite", connect_args={"check_same_thread": False})
+giftcode_engine = create_engine("sqlite:///db/giftcode.sqlite", connect_args={"check_same_thread": False})
+changes_engine = create_engine("sqlite:///db/changes.sqlite", connect_args={"check_same_thread": False})
+attendance_engine = create_engine("sqlite:///db/attendance.sqlite", connect_args={"check_same_thread": False})
+
 
 # Enable WAL mode
-with engine.connect() as connection:
+with users_engine.connect() as connection:
+    connection.exec_driver_sql("PRAGMA journal_mode=WAL;")
+with giftcode_engine.connect() as connection:
+    connection.exec_driver_sql("PRAGMA journal_mode=WAL;")
+with changes_engine.connect() as connection:
+    connection.exec_driver_sql("PRAGMA journal_mode=WAL;")
+with attendance_engine.connect() as connection:
     connection.exec_driver_sql("PRAGMA journal_mode=WAL;")
 
-def get_session():
-    with Session(engine) as session:
+def get_users_session():
+    with Session(users_engine) as session:
+        yield session
+
+def get_giftcode_session():
+    with Session(giftcode_engine) as session:
+        yield session
+
+def get_changes_session():
+    with Session(changes_engine) as session:
+        yield session
+
+def get_attendance_session():
+    with Session(attendance_engine) as session:
         yield session
 
 # --- Authentication ---
@@ -58,7 +79,7 @@ async def read_root(request: Request, authenticated: bool = Depends(is_authentic
     return templates.TemplateResponse("dashboard.html", {"request": request})
 
 @app.get("/members", response_class=HTMLResponse)
-async def read_members(request: Request, authenticated: bool = Depends(is_authenticated), session: Session = Depends(get_session)):
+async def read_members(request: Request, authenticated: bool = Depends(is_authenticated), session: Session = Depends(get_users_session)):
     if not authenticated:
         return RedirectResponse(url="/login", status_code=303)
 
@@ -66,7 +87,32 @@ async def read_members(request: Request, authenticated: bool = Depends(is_authen
     return templates.TemplateResponse("members.html", {"request": request, "users": users})
 
 @app.get("/events", response_class=HTMLResponse)
-async def read_events(request: Request, authenticated: bool = Depends(is_authenticated)):
+async def read_events(request: Request, authenticated: bool = Depends(is_authenticated), session: Session = Depends(get_attendance_session)):
     if not authenticated:
         return RedirectResponse(url="/login", status_code=303)
-    return templates.TemplateResponse("events.html", {"request": request})
+
+    events = session.exec(select(AttendanceRecord)).all()
+    return templates.TemplateResponse("events.html", {"request": request, "events": events})
+
+@app.get("/giftcodes", response_class=HTMLResponse)
+async def read_giftcodes(request: Request, authenticated: bool = Depends(is_authenticated), session: Session = Depends(get_giftcode_session)):
+    if not authenticated:
+        return RedirectResponse(url="/login", status_code=303)
+
+    user_giftcodes = session.exec(select(UserGiftCode)).all()
+    return templates.TemplateResponse("giftcodes.html", {"request": request, "user_giftcodes": user_giftcodes})
+
+@app.get("/logs", response_class=HTMLResponse)
+async def read_logs(request: Request, authenticated: bool = Depends(is_authenticated), session: Session = Depends(get_changes_session)):
+    if not authenticated:
+        return RedirectResponse(url="/login", status_code=303)
+
+    nickname_changes = session.exec(select(NicknameChange)).all()
+    furnace_changes = session.exec(select(FurnaceChange)).all()
+
+    logs = nickname_changes + furnace_changes
+
+    # Sort logs by date
+    logs.sort(key=lambda x: datetime.fromisoformat(x.change_date), reverse=True)
+
+    return templates.TemplateResponse("logs.html", {"request": request, "logs": logs})

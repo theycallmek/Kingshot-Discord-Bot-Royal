@@ -4,5 +4,44 @@
 
 {% block content %}
 <h1>Events</h1>
-<p>This page will display the event calendar.</p>
+<table>
+    <thead>
+        <tr>
+            <th>Session Name</th>
+            <th>Event Type</th>
+            <th>Event Date</th>
+            <th>Player Name</th>
+            <th>Alliance Name</th>
+            <th>Status</th>
+            <th>Points</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for event in events %}
+        <tr>
+            <td>{{ event.session_name }}</td>
+            <td>{{ event.event_type }}</td>
+            <td>{{ event.event_date.strftime('%Y-%m-%d %H:%M') if event.event_date else 'N/A' }}</td>
+            <td>{{ event.player_name }}</td>
+            <td>{{ event.alliance_name }}</td>
+            <td>{{ event.status }}</td>
+            <td>{{ event.points }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<style>
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    th, td {
+        border: 1px solid #444;
+        padding: 8px;
+        text-align: left;
+    }
+    th {
+        background-color: #333;
+    }
+</style>
 {% endblock %}
