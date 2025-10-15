@@ -121,6 +121,8 @@ async def read_events(request: Request, authenticated: bool = Depends(is_authent
             **event.model_dump(),
             created_by_nickname=nickname
         )
+        if event_with_nickname.description.startswith("EMBED_MESSAGE: "):
+            event_with_nickname.description = event_with_nickname.description.replace("EMBED_MESSAGE: ", "")
         if event_with_nickname.next_notification:
             events_map[event_with_nickname.next_notification.date()].append(event_with_nickname)
 
