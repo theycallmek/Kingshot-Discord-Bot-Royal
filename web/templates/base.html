@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Kingshot Bot Dashboard{% endblock %}</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="sidebar">
+        <h2>Kingshot Bot</h2>
+        <ul>
+            <li><a href="/" {% if request.url.path == '/' %}class="active"{% endif %}>Dashboard</a></li>
+            <li><a href="/members" {% if request.url.path == '/members' %}class="active"{% endif %}>Members</a></li>
+            <li><a href="/events" {% if request.url.path == '/events' %}class="active"{% endif %}>Events</a></li>
+            <li><a href="/giftcodes" {% if request.url.path == '/giftcodes' %}class="active"{% endif %}>Gift Codes</a></li>
+            <li><a href="/logs" {% if request.url.path == '/logs' %}class="active"{% endif %}>Logs</a></li>
+            <li><a href="/logout">Logout</a></li>
+        </ul>
+    </div>
+    <div class="content">
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>

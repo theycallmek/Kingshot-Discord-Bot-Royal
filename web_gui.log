@@ -1,0 +1,51 @@
+✓ Applied SSL context patch using certifi for default HTTPS connections.
+Checking 12 requirements...
+✓ All requirements satisfied
+Version table created successfully.
+Update check skipped due to --no-update flag.
+Database connections have been successfully established.
+All tables checked.
+[MONITOR] Cog loaded successfully
+Traceback (most recent call last):
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/discord/http.py", line 839, in static_login
+    data = await self.request(Route('GET', '/users/@me'))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/discord/http.py", line 773, in request
+    raise HTTPException(response, data)
+discord.errors.HTTPException: 401 Unauthorized (error code: 0): 401: Unauthorized
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/app/main.py", line 645, in <module>
+    asyncio.run(main())
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/asyncio/runners.py", line 195, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/app/main.py", line 642, in main
+    await bot.start(bot_token)
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/discord/client.py", line 846, in start
+    await self.login(token)
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/discord/client.py", line 675, in login
+    data = await self.http.static_login(token)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/discord/http.py", line 843, in static_login
+    raise LoginFailure('Improper token has been passed.') from exc
+discord.errors.LoginFailure: Improper token has been passed.
+INFO:     127.0.0.1:49294 - "GET /login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49294 - "GET /static/style.css HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49294 - "POST /login HTTP/1.1" 303 See Other
+INFO:     127.0.0.1:49294 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49294 - "GET /static/style.css HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49296 - "GET /members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49296 - "GET /static/style.css HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49296 - "GET /giftcodes HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49296 - "GET /logs HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49296 - "GET /events HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49296 - "GET /static/style.css HTTP/1.1" 404 Not Found

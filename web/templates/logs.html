@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}Logs - Kingshot Bot{% endblock %}
+
+{% block content %}
+<h1>Log Viewer</h1>
+<table>
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>FID</th>
+            <th>Nickname</th>
+            <th>Change Type</th>
+            <th>Old Value</th>
+            <th>New Value</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for log in logs %}
+        <tr>
+            <td>{{ log.change_date }}</td>
+            <td>{{ log.fid }}</td>
+            <td>{{ user_map.get(log.fid, 'N/A') }}</td>
+            {% if log.__tablename__ == 'nickname_changes' %}
+                <td>Nickname</td>
+                <td>{{ log.old_nickname }}</td>
+                <td>{{ log.new_nickname }}</td>
+            {% elif log.__tablename__ == 'furnace_changes' %}
+                <td>Furnace Level</td>
+                <td>{{ log.old_furnace_lv }}</td>
+                <td>{{ log.new_furnace_lv }}</td>
+            {% endif %}
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
