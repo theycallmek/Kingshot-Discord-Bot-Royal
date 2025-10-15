@@ -1,0 +1,54 @@
+2025-10-14 19:52:59,211 - gift_ops - INFO - GiftOperations Cog initializing...
+2025-10-14 19:53:03,674 - gift_ops - INFO - GiftOps Cog: on_ready triggered.
+2025-10-14 19:53:03,674 - gift_ops - INFO - Validating gift code channels...
+2025-10-14 19:53:03,674 - gift_ops - INFO - Found 0 gift code channel configurations in DB.
+2025-10-14 19:53:03,674 - gift_ops - INFO - All configured gift code channels appear valid.
+2025-10-14 19:53:03,674 - gift_ops - INFO - Started periodic validation loop (2 hour interval)
+2025-10-14 19:53:03,674 - gift_ops - INFO - GiftOps Cog: on_ready setup finished successfully.
+2025-10-14 19:53:03,678 - gift_ops - INFO - GiftOps: Waiting for bot to be ready before starting periodic_validation_loop...
+2025-10-14 19:53:03,679 - gift_ops - INFO - GiftOps: Bot is ready, periodic_validation_loop will start.
+2025-10-14 19:53:03,679 - gift_ops - INFO - 
+GiftOps: periodic_validation_loop running at 2025-10-14 19:53:03
+2025-10-14 19:53:03,679 - gift_ops - INFO - Running daily cleanup of old invalid gift codes...
+2025-10-14 19:53:03,679 - gift_ops - INFO - No old invalid gift codes found for cleanup
+2025-10-14 19:53:03,679 - gift_ops - INFO - GiftOps: No codes need periodic validation.
+2025-10-14 19:54:01,262 - gift_ops - INFO - No alliance members found, using default ID for validation: 27370737
+2025-10-14 19:54:01,262 - gift_ops - INFO - Validating gift code 'VIP777' from api using default ID: 27370737
+2025-10-14 19:54:01,771 - gift_ops - INFO - GiftOps: Starting gift code redemption for ID 27370737
+2025-10-14 19:54:01,771 - gift_ops - INFO - GiftOps: Attempting gift code redemption for ID 27370737 (no captcha required)
+2025-10-14 19:54:01,826 - gift_ops - ERROR - GiftOps: UNEXPECTED Error claiming code VIP777 for ID 27370737. Details logged.
+Traceback (most recent call last):
+  File "C:\Users\theyc\PycharmProjects\Kingshot-Discord-Bot-Royal2\cogs\gift_operations.py", line 919, in claim_giftcode_rewards_wos
+    status, _, _, _ = await self.attempt_gift_code_with_api(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        player_id, giftcode, session
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\theyc\PycharmProjects\Kingshot-Discord-Bot-Royal2\cogs\gift_operations.py", line 838, in attempt_gift_code_with_api
+    msg = response_json_redeem.get("msg", "Unknown Error").strip('.')
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'int' object has no attribute 'strip'
+2025-10-14 19:54:01,828 - gift_ops - INFO - GiftOps: claim_giftcode_rewards_wos completed for ID 27370737. Status: ERROR, Duration: 0.565s
+2025-10-14 19:54:01,828 - gift_ops - INFO - GiftOps: Final status for ID 27370737 / Code 'VIP777': ERROR
+2025-10-14 19:54:01,829 - gift_ops - WARNING - Gift code 'VIP777' validation returned: ERROR
+2025-10-14 19:54:01,830 - gift_ops - INFO - No alliance members found, using default ID for validation: 27370737
+2025-10-14 19:54:01,830 - gift_ops - INFO - Validating gift code 'tgs2025ks1st' from api using default ID: 27370737
+2025-10-14 19:54:02,333 - gift_ops - INFO - GiftOps: Starting gift code redemption for ID 27370737
+2025-10-14 19:54:02,334 - gift_ops - INFO - GiftOps: Attempting gift code redemption for ID 27370737 (no captcha required)
+2025-10-14 19:54:02,385 - gift_ops - ERROR - GiftOps: UNEXPECTED Error claiming code tgs2025ks1st for ID 27370737. Details logged.
+Traceback (most recent call last):
+  File "C:\Users\theyc\PycharmProjects\Kingshot-Discord-Bot-Royal2\cogs\gift_operations.py", line 919, in claim_giftcode_rewards_wos
+    status, _, _, _ = await self.attempt_gift_code_with_api(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        player_id, giftcode, session
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\theyc\PycharmProjects\Kingshot-Discord-Bot-Royal2\cogs\gift_operations.py", line 838, in attempt_gift_code_with_api
+    msg = response_json_redeem.get("msg", "Unknown Error").strip('.')
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'int' object has no attribute 'strip'
+2025-10-14 19:54:02,386 - gift_ops - INFO - GiftOps: claim_giftcode_rewards_wos completed for ID 27370737. Status: ERROR, Duration: 0.556s
+2025-10-14 19:54:02,386 - gift_ops - INFO - GiftOps: Final status for ID 27370737 / Code 'tgs2025ks1st': ERROR
+2025-10-14 19:54:02,387 - gift_ops - WARNING - Gift code 'tgs2025ks1st' validation returned: ERROR

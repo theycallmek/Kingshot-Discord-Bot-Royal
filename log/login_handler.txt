@@ -1,0 +1,3 @@
+[2025-10-14 19:53:03] Kingshot API availability check: Status 200
+[2025-10-14 19:53:03] Queue processor started
+[2025-10-14 19:53:03] Queue processor starting...
