@@ -255,9 +255,9 @@ tbody tr:hover {
     border-radius: 3px;
     margin-bottom: 0.3rem;
     font-size: 0.8rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    white-space: normal;
+    word-break: break-all;
+    max-width: 100%;
     border-left: 3px solid var(--primary-color);
 }
 
