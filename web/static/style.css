@@ -72,6 +72,8 @@ a {
 .content {
     margin-left: 250px;
     padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
 }
 
 table {
@@ -149,10 +151,10 @@ tbody tr:hover {
     margin-top: 1rem;
 }
 
-/* Card Grid Layout for Members Page */
+/* Horizontal Card Layout for Members Page */
 .card-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    display: flex;
+    flex-wrap: wrap;
     gap: 1.5rem;
     margin-top: 2rem;
 }
@@ -160,9 +162,11 @@ tbody tr:hover {
 .member-card {
     background-color: var(--surface-color);
     border-radius: 8px;
-    padding: 1.5rem;
+    padding: 1rem 1.5rem;
     border: 1px solid var(--border-color);
     transition: transform 0.2s ease, box-shadow 0.2s ease;
+    width: 400px; /* Wider card */
+    height: 150px; /* Shorter card */
 }
 
 .member-card:hover {
