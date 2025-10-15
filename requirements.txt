@@ -10,3 +10,9 @@ matplotlib>=3.10.0
 arabic-reshaper>=3.0.0
 python-bidi>=0.6.2
 certifi>=2025.4.26
+fastapi
+uvicorn
+python-multipart
+jinja2
+sqlmodel
+itsdangerous
