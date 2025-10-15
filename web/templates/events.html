@@ -25,8 +25,15 @@
                         {% if day in events_map %}
                             {% for event in events_map[day] %}
                                 <div class="event">
-                                    <span class="event-time">{{ event.next_notification.strftime('%H:%M') }}</span>
-                                    <span class="event-desc">{{ event.description }}</span>
+                                    <div class="event-time">{{ event.hour }}:{{ "%02d"|format(event.minute) }}</div>
+                                    <div class="event-desc">{{ event.description }}</div>
+                                    <div class="event-details">
+                                        <p><strong>Planner:</strong> {{ event.created_by_nickname }}</p>
+                                        <p><strong>Repeats:</strong> {% if event.repeat_enabled %}Yes{% else %}No{% endif %}</p>
+                                        <p><strong>Created:</strong> {{ event.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                                        <p><strong>Last Notification:</strong> {{ event.last_notification.strftime('%Y-%m-%d %H:%M') if event.last_notification else 'N/A' }}</p>
+                                        <p><strong>Next Notification:</strong> {{ event.next_notification.strftime('%Y-%m-%d %H:%M') if event.next_notification else 'N/A' }}</p>
+                                    </div>
                                 </div>
                             {% endfor %}
                         {% endif %}

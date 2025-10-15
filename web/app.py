@@ -102,7 +102,7 @@ async def read_members(request: Request, authenticated: bool = Depends(is_authen
     return templates.TemplateResponse("members.html", {"request": request, "users": users})
 
 @app.get("/events", response_class=HTMLResponse)
-async def read_events(request: Request, authenticated: bool = Depends(is_authenticated), session: Session = Depends(get_beartime_session)):
+async def read_events(request: Request, authenticated: bool = Depends(is_authenticated), beartime_session: Session = Depends(get_beartime_session), users_session: Session = Depends(get_users_session)):
     if not authenticated:
         return RedirectResponse(url="/login", status_code=303)
 
@@ -110,9 +110,13 @@ async def read_events(request: Request, authenticated: bool = Depends(is_authent
     cal = calendar.Calendar()
     month_days = cal.monthdatescalendar(today.year, today.month)
 
-    events_query = session.exec(select(BearNotification)).all()
+    users = users_session.exec(select(User)).all()
+    user_map = {user.fid: user.nickname for user in users}
+
+    events_query = beartime_session.exec(select(BearNotification)).all()
     events_map = defaultdict(list)
     for event in events_query:
+        event.created_by_nickname = user_map.get(event.created_by, "Unknown")
         if event.next_notification:
             events_map[event.next_notification.date()].append(event)
 
