@@ -1,33 +1,39 @@
 {% extends "base.html" %}
 
-{% block title %}Events - Kingshot Bot{% endblock %}
+{% block title %}Events Calendar - Kingshot Bot{% endblock %}
 
 {% block content %}
-<h1>Events</h1>
-<table>
-    <thead>
-        <tr>
-            <th>Session Name</th>
-            <th>Event Type</th>
-            <th>Event Date</th>
-            <th>Player Name</th>
-            <th>Alliance Name</th>
-            <th>Status</th>
-            <th>Points</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for event in events %}
-        <tr>
-            <td>{{ event.session_name }}</td>
-            <td>{{ event.event_type }}</td>
-            <td>{{ event.event_date.strftime('%Y-%m-%d %H:%M') if event.event_date else 'N/A' }}</td>
-            <td>{{ event.player_name }}</td>
-            <td>{{ event.alliance_name }}</td>
-            <td>{{ event.status }}</td>
-            <td>{{ event.points }}</td>
-        </tr>
+<h1>Events Calendar</h1>
+<div class="calendar">
+    <div class="calendar-header">
+        <span class="month-name">{{ today.strftime('%B %Y') }}</span>
+    </div>
+    <div class="calendar-grid">
+        <div class="day-name">Sun</div>
+        <div class="day-name">Mon</div>
+        <div class="day-name">Tue</div>
+        <div class="day-name">Wed</div>
+        <div class="day-name">Thu</div>
+        <div class="day-name">Fri</div>
+        <div class="day-name">Sat</div>
+
+        {% for week in month_days %}
+            {% for day in week %}
+                <div class="day {% if day.month != today.month %}other-month{% endif %} {% if day == today %}today{% endif %}">
+                    <div class="day-number">{{ day.day }}</div>
+                    <div class="events">
+                        {% if day in events_map %}
+                            {% for event in events_map[day] %}
+                                <div class="event">
+                                    <span class="event-time">{{ event.next_notification.strftime('%H:%M') }}</span>
+                                    <span class="event-desc">{{ event.description }}</span>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
         {% endfor %}
-    </tbody>
-</table>
+    </div>
+</div>
 {% endblock %}

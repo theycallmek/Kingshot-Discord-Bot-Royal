@@ -3,27 +3,16 @@
 {% block title %}Members - Kingshot Bot{% endblock %}
 
 {% block content %}
-<h1>Members</h1>
-<table>
-    <thead>
-        <tr>
-            <th>FID</th>
-            <th>Nickname</th>
-            <th>Furnace Level</th>
-            <th>KID</th>
-            <th>Alliance</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for user in users %}
-        <tr>
-            <td>{{ user.fid }}</td>
-            <td>{{ user.nickname }}</td>
-            <td>{{ user.furnace_lv }}</td>
-            <td>{{ user.kid }}</td>
-            <td>{{ user.alliance }}</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<h1>Alliance Members</h1>
+<div class="card-grid">
+    {% for user in users %}
+    <div class="member-card">
+        <h3>{{ user.nickname }}</h3>
+        <p><strong>FID:</strong> {{ user.fid }}</p>
+        <p><strong>Furnace Level:</strong> {{ user.furnace_lv }}</p>
+        <p><strong>KID:</strong> {{ user.kid }}</p>
+        <p><strong>Alliance:</strong> {{ user.alliance }}</p>
+    </div>
+    {% endfor %}
+</div>
 {% endblock %}

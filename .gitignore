@@ -89,3 +89,7 @@ venv.bak/
 
 # Backup files
 *.bak
+
+# SQLite temporary files
+*.sqlite-shm
+*.sqlite-wal

@@ -148,3 +148,114 @@ tbody tr:hover {
     color: var(--error-color);
     margin-top: 1rem;
 }
+
+/* Card Grid Layout for Members Page */
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin-top: 2rem;
+}
+
+.member-card {
+    background-color: var(--surface-color);
+    border-radius: 8px;
+    padding: 1.5rem;
+    border: 1px solid var(--border-color);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.member-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+}
+
+.member-card h3 {
+    margin-top: 0;
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+.member-card p {
+    margin-bottom: 0.5rem;
+}
+
+/* Calendar Styles */
+.calendar {
+    background-color: var(--surface-color);
+    border-radius: 8px;
+    padding: 1.5rem;
+    border: 1px solid var(--border-color);
+}
+
+.calendar-header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.month-name {
+    font-size: 1.8rem;
+    font-weight: 300;
+    color: var(--primary-color);
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 5px;
+}
+
+.day-name {
+    text-align: center;
+    font-weight: 600;
+    color: var(--header-color);
+    margin-bottom: 0.5rem;
+}
+
+.day {
+    background-color: var(--background-color);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    min-height: 120px;
+    padding: 0.5rem;
+}
+
+.day.other-month {
+    opacity: 0.4;
+}
+
+.day.today .day-number {
+    background-color: var(--primary-color);
+    color: var(--header-color);
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.day-number {
+    font-weight: 600;
+}
+
+.events {
+    margin-top: 0.5rem;
+}
+
+.event {
+    background-color: var(--surface-color);
+    padding: 0.3rem;
+    border-radius: 3px;
+    margin-bottom: 0.3rem;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border-left: 3px solid var(--primary-color);
+}
+
+.event-time {
+    font-weight: bold;
+    margin-right: 0.5em;
+}

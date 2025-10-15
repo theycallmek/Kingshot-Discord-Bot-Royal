@@ -1,6 +1,6 @@
 from typing import Optional, List
 from sqlmodel import Field, SQLModel, Relationship
-from datetime import datetime
+from datetime import datetime, time
 
 class GiftCode(SQLModel, table=True):
     __tablename__ = "gift_codes"
@@ -62,3 +62,22 @@ class AttendanceRecord(SQLModel, table=True):
     marked_by: Optional[str] = None
     marked_by_username: Optional[str] = None
     created_at: Optional[datetime] = None
+
+class BearNotification(SQLModel, table=True):
+    __tablename__ = "bear_notifications"
+    id: Optional[int] = Field(default=None, primary_key=True)
+    guild_id: int
+    channel_id: int
+    hour: int
+    minute: int
+    timezone: str
+    description: str
+    notification_type: int
+    mention_type: str
+    repeat_enabled: int
+    repeat_minutes: int
+    is_enabled: int
+    created_at: datetime
+    created_by: int
+    last_notification: Optional[datetime] = None
+    next_notification: Optional[datetime] = None

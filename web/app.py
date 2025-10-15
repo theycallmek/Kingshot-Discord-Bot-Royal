@@ -1,14 +1,19 @@
 from fastapi import FastAPI, Request, Form, Depends
+from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 from sqlmodel import create_engine, Session, select
-from .models import User, UserGiftCode, NicknameChange, FurnaceChange, AttendanceRecord, GiftCode
+from .models import User, UserGiftCode, NicknameChange, FurnaceChange, AttendanceRecord, GiftCode, BearNotification
 import os
-from datetime import datetime
+from datetime import datetime, date
 from collections import defaultdict
+import calendar
 
 app = FastAPI()
+
+# Mount static files
+app.mount("/static", StaticFiles(directory="web/static"), name="static")
 
 # --- Configuration ---
 SECRET_KEY = os.environ.get("SECRET_KEY", "your-secret-key")
@@ -23,6 +28,7 @@ users_engine = create_engine("sqlite:///db/users.sqlite", connect_args={"check_s
 giftcode_engine = create_engine("sqlite:///db/giftcode.sqlite", connect_args={"check_same_thread": False})
 changes_engine = create_engine("sqlite:///db/changes.sqlite", connect_args={"check_same_thread": False})
 attendance_engine = create_engine("sqlite:///db/attendance.sqlite", connect_args={"check_same_thread": False})
+beartime_engine = create_engine("sqlite:///db/beartime.sqlite", connect_args={"check_same_thread": False})
 
 
 # Enable WAL mode
@@ -33,6 +39,8 @@ with giftcode_engine.connect() as connection:
 with changes_engine.connect() as connection:
     connection.exec_driver_sql("PRAGMA journal_mode=WAL;")
 with attendance_engine.connect() as connection:
+    connection.exec_driver_sql("PRAGMA journal_mode=WAL;")
+with beartime_engine.connect() as connection:
     connection.exec_driver_sql("PRAGMA journal_mode=WAL;")
 
 def get_users_session():
@@ -49,6 +57,10 @@ def get_changes_session():
 
 def get_attendance_session():
     with Session(attendance_engine) as session:
+        yield session
+
+def get_beartime_session():
+    with Session(beartime_engine) as session:
         yield session
 
 # --- Authentication ---
@@ -88,12 +100,26 @@ async def read_members(request: Request, authenticated: bool = Depends(is_authen
     return templates.TemplateResponse("members.html", {"request": request, "users": users})
 
 @app.get("/events", response_class=HTMLResponse)
-async def read_events(request: Request, authenticated: bool = Depends(is_authenticated), session: Session = Depends(get_attendance_session)):
+async def read_events(request: Request, authenticated: bool = Depends(is_authenticated), session: Session = Depends(get_beartime_session)):
     if not authenticated:
         return RedirectResponse(url="/login", status_code=303)
 
-    events = session.exec(select(AttendanceRecord)).all()
-    return templates.TemplateResponse("events.html", {"request": request, "events": events})
+    today = date.today()
+    cal = calendar.Calendar()
+    month_days = cal.monthdatescalendar(today.year, today.month)
+
+    events_query = session.exec(select(BearNotification)).all()
+    events_map = defaultdict(list)
+    for event in events_query:
+        if event.next_notification:
+            events_map[event.next_notification.date()].append(event)
+
+    return templates.TemplateResponse("events.html", {
+        "request": request,
+        "month_days": month_days,
+        "events_map": events_map,
+        "today": today
+    })
 
 @app.get("/giftcodes", response_class=HTMLResponse)
 async def read_giftcodes(request: Request, authenticated: bool = Depends(is_authenticated), giftcode_session: Session = Depends(get_giftcode_session), users_session: Session = Depends(get_users_session)):
@@ -140,6 +166,9 @@ async def read_logs(request: Request, authenticated: bool = Depends(is_authentic
     logs = nickname_changes + furnace_changes
 
     # Sort logs by date
-    logs.sort(key=lambda x: datetime.fromisoformat(x.change_date), reverse=True)
+    try:
+        logs.sort(key=lambda x: datetime.fromisoformat(x.change_date), reverse=True)
+    except (ValueError, TypeError): # Handle cases where change_date might not be a valid ISO format string
+        pass # Or add more robust error handling/logging
 
     return templates.TemplateResponse("logs.html", {"request": request, "logs": logs, "user_map": user_map})
