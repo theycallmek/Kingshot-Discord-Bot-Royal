@@ -160,15 +160,6 @@ except Exception as e:
     print(f"Error applying SSL context patch: {e}")
 
 if __name__ == "__main__":
-    if "--web-gui" in sys.argv:
-        try:
-            print("Starting web dashboard...")
-            # Use subprocess.Popen to run uvicorn in a separate process
-            subprocess.Popen([sys.executable, "-m", "uvicorn", "web.app:app", "--host", "0.0.0.0", "--port", "8000"])
-            print("Web dashboard started at http://0.0.0.0:8000")
-        except Exception as e:
-            print(f"Failed to start web dashboard: {e}")
-
     check_and_install_requirements()
     
     import discord
