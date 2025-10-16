@@ -259,6 +259,9 @@ tbody tr:hover {
     word-break: break-all;
     max-width: 100%;
     border-left: 3px solid var(--primary-color);
+    background-size: cover;
+    background-position: center;
+    color: white;
 }
 
 .event-time {

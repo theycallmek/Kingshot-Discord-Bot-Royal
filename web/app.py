@@ -4,7 +4,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 from sqlmodel import create_engine, Session, select
-from .models import User, UserGiftCode, NicknameChange, FurnaceChange, AttendanceRecord, GiftCode, BearNotification, BearNotificationWithNickname
+from .models import User, UserGiftCode, NicknameChange, FurnaceChange, AttendanceRecord, GiftCode, BearNotification, BearNotificationWithNickname, BearNotificationEmbed
 import os
 from datetime import datetime, date, timedelta
 from collections import defaultdict
@@ -101,6 +101,16 @@ async def read_members(request: Request, authenticated: bool = Depends(is_authen
     users = session.exec(select(User)).all()
     return templates.TemplateResponse("members.html", {"request": request, "users": users})
 
+def dec_to_hex(decimal_color):
+    if decimal_color is None:
+        return None
+    return f"#{decimal_color:06x}"
+
+class BearNotificationWithEmbed(BearNotificationWithNickname):
+    embed_title: Optional[str] = None
+    embed_color: Optional[str] = None
+    embed_thumbnail_url: Optional[str] = None
+
 @app.get("/events", response_class=HTMLResponse)
 async def read_events(request: Request, authenticated: bool = Depends(is_authenticated), beartime_session: Session = Depends(get_beartime_session), users_session: Session = Depends(get_users_session)):
     if not authenticated:
@@ -113,28 +123,33 @@ async def read_events(request: Request, authenticated: bool = Depends(is_authent
     users = users_session.exec(select(User)).all()
     user_map = {user.fid: user.nickname for user in users}
 
-    events_query = beartime_session.exec(select(BearNotification)).all()
+    events_query = beartime_session.exec(select(BearNotification).join(BearNotificationEmbed)).all()
     events_map = defaultdict(list)
     for event in events_query:
         nickname = user_map.get(event.created_by, "Unknown")
-        event_with_nickname = BearNotificationWithNickname(
-            **event.model_dump(),
-            created_by_nickname=nickname
-        )
-        event_with_nickname.description = event_with_nickname.description.replace("EMBED_MESSAGE:", "").strip()
-        if nickname == "Unknown":
-            pass
-        if event_with_nickname.next_notification and event_with_nickname.next_notification.date() >= today:
-            events_map[event_with_nickname.next_notification.date()].append(event_with_nickname)
 
-        if event_with_nickname.repeat_enabled and event_with_nickname.next_notification:
-            next_occurrence = event_with_nickname.next_notification + timedelta(minutes=event_with_nickname.repeat_minutes)
+        if not event.embeds:
+            continue
+        embed = event.embeds[0]
+        event_with_embed = BearNotificationWithEmbed(
+            **event.model_dump(),
+            created_by_nickname=nickname,
+            embed_title=embed.title,
+            embed_color=dec_to_hex(embed.color),
+            embed_thumbnail_url=embed.thumbnail_url,
+        )
+
+        if event_with_embed.next_notification and event_with_embed.next_notification.date() >= today:
+            events_map[event_with_embed.next_notification.date()].append(event_with_embed)
+
+        if event_with_embed.repeat_enabled and event_with_embed.next_notification:
+            next_occurrence = event_with_embed.next_notification + timedelta(minutes=event_with_embed.repeat_minutes)
             while next_occurrence.month == today.month:
                 if next_occurrence.date() >= today:
-                    clone = BearNotificationWithNickname(**event_with_nickname.model_dump())
+                    clone = BearNotificationWithEmbed(**event_with_embed.model_dump())
                     clone.next_notification = next_occurrence
                     events_map[next_occurrence.date()].append(clone)
-                next_occurrence += timedelta(minutes=event_with_nickname.repeat_minutes)
+                next_occurrence += timedelta(minutes=event_with_embed.repeat_minutes)
 
     return templates.TemplateResponse("events.html", {
         "request": request,

@@ -63,6 +63,22 @@ class AttendanceRecord(SQLModel, table=True):
     marked_by_username: Optional[str] = None
     created_at: Optional[datetime] = None
 
+class BearNotificationEmbed(SQLModel, table=True):
+    __tablename__ = "bear_notification_embeds"
+    id: Optional[int] = Field(default=None, primary_key=True)
+    notification_id: int = Field(foreign_key="bear_notifications.id")
+    title: Optional[str] = None
+    description: Optional[str] = None
+    color: Optional[int] = None
+    image_url: Optional[str] = None
+    thumbnail_url: Optional[str] = None
+    footer: Optional[str] = None
+    author: Optional[str] = None
+    mention_message: Optional[str] = None
+    created_at: Optional[datetime] = None
+
+    notification: "BearNotification" = Relationship(back_populates="embeds")
+
 class BearNotification(SQLModel, table=True):
     __tablename__ = "bear_notifications"
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -82,5 +98,10 @@ class BearNotification(SQLModel, table=True):
     last_notification: Optional[datetime] = None
     next_notification: Optional[datetime] = None
 
+    embeds: List[BearNotificationEmbed] = Relationship(back_populates="notification")
+
 class BearNotificationWithNickname(BearNotification):
     created_by_nickname: Optional[str] = None
+
+BearNotification.update_forward_refs()
+BearNotificationEmbed.update_forward_refs()

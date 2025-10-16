@@ -24,14 +24,12 @@
                     <div class="events">
                         {% if day in events_map %}
                             {% for event in events_map[day] %}
-                                <div class="event">
+                                <div class="event" style="background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url({{ event.embed_thumbnail_url }}); border-left-color: {{ event.embed_color }};">
                                     <div class="event-time">{{ event.hour }}:{{ "%02d"|format(event.minute) }}</div>
-                                    <div class="event-desc">{{ event.description }}</div>
+                                    <div class="event-desc">{{ event.embed_title }}</div>
                                     <div class="event-details">
-                                        <strong>Planner:</strong> {{ event.created_by_nickname }}<br>
+                                        {{ event.created_by_nickname }}<br>
                                         <strong>Repeats:</strong> {% if event.repeat_enabled %}Yes{% else %}No{% endif %}<br>
-                                        <strong>Created:</strong> {{ event.created_at.strftime('%Y-%m-%d %H:%M') if event.created_at else 'N/A' }}<br>
-                                        <strong>Last Notification:</strong> {{ event.last_notification.strftime('%Y-%m-%d %H:%M') if event.last_notification else 'N/A' }}
                                     </div>
                                 </div>
                             {% endfor %}
