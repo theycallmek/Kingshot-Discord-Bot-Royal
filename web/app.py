@@ -121,10 +121,9 @@ async def read_events(request: Request, authenticated: bool = Depends(is_authent
             **event.model_dump(),
             created_by_nickname=nickname
         )
-        if "embed_message: " in event_with_nickname.description.lower():
-            event_with_nickname.description = event_with_nickname.description.split(":", 1)[-1].strip()
+        event_with_nickname.description = event_with_nickname.description.replace("EMBED_MESSAGE:", "").strip()
         if nickname == "Unknown":
-            print(f"Unknown user ID: {event.created_by}")
+            pass
         if event_with_nickname.next_notification and event_with_nickname.next_notification.date() >= today:
             events_map[event_with_nickname.next_notification.date()].append(event_with_nickname)
 
