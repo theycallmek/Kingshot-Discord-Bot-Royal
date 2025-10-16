@@ -6,7 +6,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from sqlmodel import create_engine, Session, select
 from .models import User, UserGiftCode, NicknameChange, FurnaceChange, AttendanceRecord, GiftCode, BearNotification, BearNotificationWithNickname
 import os
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from collections import defaultdict
 import calendar
 
@@ -121,10 +121,21 @@ async def read_events(request: Request, authenticated: bool = Depends(is_authent
             **event.model_dump(),
             created_by_nickname=nickname
         )
-        if event_with_nickname.description.startswith("EMBED_MESSAGE: "):
-            event_with_nickname.description = event_with_nickname.description.replace("EMBED_MESSAGE: ", "")
-        if event_with_nickname.next_notification:
+        if "embed_message: " in event_with_nickname.description.lower():
+            event_with_nickname.description = event_with_nickname.description.split(":", 1)[-1].strip()
+        if nickname == "Unknown":
+            print(f"Unknown user ID: {event.created_by}")
+        if event_with_nickname.next_notification and event_with_nickname.next_notification.date() >= today:
             events_map[event_with_nickname.next_notification.date()].append(event_with_nickname)
+
+        if event_with_nickname.repeat_enabled and event_with_nickname.next_notification:
+            next_occurrence = event_with_nickname.next_notification + timedelta(minutes=event_with_nickname.repeat_minutes)
+            while next_occurrence.month == today.month:
+                if next_occurrence.date() >= today:
+                    clone = BearNotificationWithNickname(**event_with_nickname.model_dump())
+                    clone.next_notification = next_occurrence
+                    events_map[next_occurrence.date()].append(clone)
+                next_occurrence += timedelta(minutes=event_with_nickname.repeat_minutes)
 
     return templates.TemplateResponse("events.html", {
         "request": request,
