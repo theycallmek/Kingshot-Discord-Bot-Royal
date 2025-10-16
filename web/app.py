@@ -3,9 +3,9 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
-from sqlmodel import create_engine, Session, select
-from .models import User, UserGiftCode, NicknameChange, FurnaceChange, AttendanceRecord, GiftCode, BearNotification, BearNotificationWithNickname, BearNotificationEmbed
-import os
+from sqlmodel import create_engine, Session, select, SQLModel
+from .models import User, UserGiftCode, NicknameChange, FurnaceChange, AttendanceRecord, GiftCode, BearNotification, BearNotificationEmbed
+import os, typing
 from datetime import datetime, date, timedelta
 from collections import defaultdict
 import calendar
@@ -106,10 +106,31 @@ def dec_to_hex(decimal_color):
         return None
     return f"#{decimal_color:06x}"
 
-class BearNotificationWithEmbed(BearNotificationWithNickname):
-    embed_title: Optional[str] = None
-    embed_color: Optional[str] = None
-    embed_thumbnail_url: Optional[str] = None
+# This is an API Model (also called a DTO), not a table model.
+# It's used to structure data specifically for the frontend.
+class BearNotificationWithEmbed(SQLModel):
+    # Fields from BearNotification
+    id: int
+    guild_id: int
+    channel_id: int
+    hour: int
+    minute: int
+    timezone: str
+    description: str
+    notification_type: int
+    mention_type: str
+    repeat_enabled: int
+    repeat_minutes: int
+    is_enabled: int
+    created_at: typing.Optional[datetime] = None
+    last_notification: typing.Optional[datetime] = None
+    next_notification: typing.Optional[datetime] = None
+
+    # Extra fields for the frontend
+    created_by_nickname: typing.Optional[str] = None
+    embed_title: typing.Optional[str] = None
+    embed_color: typing.Optional[str] = None
+    embed_thumbnail_url: typing.Optional[str] = None
 
 @app.get("/events", response_class=HTMLResponse)
 async def read_events(request: Request, authenticated: bool = Depends(is_authenticated), beartime_session: Session = Depends(get_beartime_session), users_session: Session = Depends(get_users_session)):
@@ -150,6 +171,10 @@ async def read_events(request: Request, authenticated: bool = Depends(is_authent
                     clone.next_notification = next_occurrence
                     events_map[next_occurrence.date()].append(clone)
                 next_occurrence += timedelta(minutes=event_with_embed.repeat_minutes)
+
+    # Sort events within each day by their notification time
+    for day_events in events_map.values():
+        day_events.sort(key=lambda e: e.next_notification)
 
     return templates.TemplateResponse("events.html", {
         "request": request,
