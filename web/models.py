@@ -1,5 +1,4 @@
 from typing import Optional, List
-from pydantic import ConfigDict
 from sqlmodel import Field, SQLModel, Relationship
 from datetime import datetime, time
 
@@ -78,11 +77,8 @@ class BearNotificationEmbed(SQLModel, table=True):
     mention_message: Optional[str] = None
     created_at: Optional[datetime] = None
 
-    notification: "BearNotification" = Relationship(back_populates="embeds")
-
 class BearNotification(SQLModel, table=True):
     __tablename__ = "bear_notifications"
-    model_config = ConfigDict(arbitrary_types_allowed=True)
     id: Optional[int] = Field(default=None, primary_key=True)
     guild_id: int
     channel_id: int
@@ -100,10 +96,5 @@ class BearNotification(SQLModel, table=True):
     last_notification: Optional[datetime] = None
     next_notification: Optional[datetime] = None
 
-    embeds: List[BearNotificationEmbed] = Relationship(back_populates="notification")
-
-BearNotification.update_forward_refs()
-BearNotificationEmbed.update_forward_refs()
-User.update_forward_refs()
-UserGiftCode.update_forward_refs()
-GiftCode.update_forward_refs()
+class BearNotificationWithNickname(BearNotification):
+    created_by_nickname: Optional[str] = None

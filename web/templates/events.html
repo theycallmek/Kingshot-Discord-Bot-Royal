@@ -24,11 +24,17 @@
                     <div class="events">
                         {% if day in events_map %}
                             {% for event in events_map[day] %}
-                                <div class="event" style="background-image: linear-gradient(rgba(0,0,0,0.95), rgba(0,0,0,0.85)), url({{ event.embed_thumbnail_url }}); border-left-color: {{ event.embed_color }};">
+                                <div class="event" style="background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url({{ event.embed_thumbnail_url }}); border-left-color: {{ event.embed_color }};"
+                                     data-id="{{ event.id }}"
+                                     data-title="{{ event.embed_title }}"
+                                     data-hour="{{ event.hour }}"
+                                     data-minute="{{ event.minute }}"
+                                     data-repeats="{{ event.repeat_enabled }}">
                                     <div class="event-time">{{ event.hour }}:{{ "%02d"|format(event.minute) }}</div>
                                     <div class="event-desc">{{ event.embed_title }}</div>
                                     <div class="event-details">
-                                        <strong>Repeats:</strong> {% if event.repeat_enabled %}✅{% else %}❌{% endif %}<br>
+                                        {{ event.created_by_nickname }}<br>
+                                        <strong>Repeats:</strong> {% if event.repeat_enabled %}Yes{% else %}No{% endif %}<br>
                                     </div>
                                 </div>
                             {% endfor %}
@@ -39,4 +45,84 @@
         {% endfor %}
     </div>
 </div>
+
+<div id="edit-event-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <span class="close-button">&times;</span>
+        <h2>Edit Event</h2>
+        <form id="edit-event-form">
+            <input type="hidden" id="event-id" name="id">
+            <label for="event-title">Title:</label>
+            <input type="text" id="event-title" name="embed_title">
+            <label for="event-hour">Hour:</label>
+            <input type="number" id="event-hour" name="hour" min="0" max="23">
+            <label for="event-minute">Minute:</label>
+            <input type="number" id="event-minute" name="minute" min="0" max="59">
+            <label for="event-repeats">Repeats:</label>
+            <input type="checkbox" id="event-repeats" name="repeat_enabled">
+            <div class="modal-buttons">
+                <button type="submit">Save</button>
+                <button type="button" id="cancel-button">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const modal = document.getElementById('edit-event-modal');
+    const closeButton = document.querySelector('.close-button');
+    const cancelButton = document.getElementById('cancel-button');
+    const form = document.getElementById('edit-event-form');
+
+    document.querySelectorAll('.event').forEach(eventEl => {
+        eventEl.addEventListener('click', () => {
+            document.getElementById('event-id').value = eventEl.dataset.id;
+            document.getElementById('event-title').value = eventEl.dataset.title;
+            document.getElementById('event-hour').value = eventEl.dataset.hour;
+            document.getElementById('event-minute').value = eventEl.dataset.minute;
+            document.getElementById('event-repeats').checked = eventEl.dataset.repeats.toLowerCase() === 'true';
+            modal.style.display = 'block';
+        });
+    });
+
+    const closeModal = () => {
+        modal.style.display = 'none';
+    };
+
+    closeButton.addEventListener('click', closeModal);
+    cancelButton.addEventListener('click', closeModal);
+    window.addEventListener('click', (event) => {
+        if (event.target == modal) {
+            closeModal();
+        }
+    });
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        data.id = parseInt(data.id);
+        data.hour = parseInt(data.hour);
+        data.minute = parseInt(data.minute);
+        data.repeat_enabled = data.repeat_enabled === 'on';
+
+        const response = await fetch('/update_event', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+
+        if (response.ok) {
+            closeModal();
+            location.reload();
+        } else {
+            alert('Failed to save event.');
+        }
+    });
+});
+</script>
 {% endblock %}

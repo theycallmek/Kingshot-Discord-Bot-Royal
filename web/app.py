@@ -1,14 +1,16 @@
-from fastapi import FastAPI, Request, Form, Depends
+from fastapi import FastAPI, Request, Form, Depends, Body
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
-from sqlmodel import create_engine, Session, select, SQLModel
-from .models import User, UserGiftCode, NicknameChange, FurnaceChange, AttendanceRecord, GiftCode, BearNotification, BearNotificationEmbed
-import os, typing
+from sqlmodel import create_engine, Session, select
+from .models import User, UserGiftCode, NicknameChange, FurnaceChange, AttendanceRecord, GiftCode, BearNotification, BearNotificationWithNickname, BearNotificationEmbed
+import os
 from datetime import datetime, date, timedelta
 from collections import defaultdict
 import calendar
+from pydantic import BaseModel
+from typing import Optional
 
 app = FastAPI()
 
@@ -106,31 +108,10 @@ def dec_to_hex(decimal_color):
         return None
     return f"#{decimal_color:06x}"
 
-# This is an API Model (also called a DTO), not a table model.
-# It's used to structure data specifically for the frontend.
-class BearNotificationWithEmbed(SQLModel):
-    # Fields from BearNotification
-    id: int
-    guild_id: int
-    channel_id: int
-    hour: int
-    minute: int
-    timezone: str
-    description: str
-    notification_type: int
-    mention_type: str
-    repeat_enabled: int
-    repeat_minutes: int
-    is_enabled: int
-    created_at: typing.Optional[datetime] = None
-    last_notification: typing.Optional[datetime] = None
-    next_notification: typing.Optional[datetime] = None
-
-    # Extra fields for the frontend
-    created_by_nickname: typing.Optional[str] = None
-    embed_title: typing.Optional[str] = None
-    embed_color: typing.Optional[str] = None
-    embed_thumbnail_url: typing.Optional[str] = None
+class BearNotificationWithEmbed(BearNotificationWithNickname):
+    embed_title: Optional[str] = None
+    embed_color: Optional[str] = None
+    embed_thumbnail_url: Optional[str] = None
 
 @app.get("/events", response_class=HTMLResponse)
 async def read_events(request: Request, authenticated: bool = Depends(is_authenticated), beartime_session: Session = Depends(get_beartime_session), users_session: Session = Depends(get_users_session)):
@@ -172,10 +153,6 @@ async def read_events(request: Request, authenticated: bool = Depends(is_authent
                     events_map[next_occurrence.date()].append(clone)
                 next_occurrence += timedelta(minutes=event_with_embed.repeat_minutes)
 
-    # Sort events within each day by their notification time
-    for day_events in events_map.values():
-        day_events.sort(key=lambda e: e.next_notification)
-
     return templates.TemplateResponse("events.html", {
         "request": request,
         "month_days": month_days,
@@ -212,6 +189,39 @@ async def read_giftcodes(request: Request, authenticated: bool = Depends(is_auth
         "all_codes": all_codes,
         "redemption_map": redemption_map
     })
+
+class EventUpdate(BaseModel):
+    id: int
+    hour: int
+    minute: int
+    repeat_enabled: bool
+    embed_title: str
+
+@app.post("/update_event", response_class=JSONResponse)
+async def update_event(
+    request: Request,
+    authenticated: bool = Depends(is_authenticated),
+    beartime_session: Session = Depends(get_beartime_session),
+    data: EventUpdate = Body(...)
+):
+    if not authenticated:
+        return JSONResponse(content={"success": False, "error": "Unauthorized"}, status_code=401)
+
+    notification = beartime_session.get(BearNotification, data.id)
+    if not notification:
+        return JSONResponse(content={"success": False, "error": "Event not found"}, status_code=404)
+
+    notification.hour = data.hour
+    notification.minute = data.minute
+    notification.repeat_enabled = data.repeat_enabled
+
+    if notification.embeds:
+        notification.embeds[0].title = data.embed_title
+
+    beartime_session.add(notification)
+    beartime_session.commit()
+
+    return JSONResponse(content={"success": True})
 
 @app.get("/logs", response_class=HTMLResponse)
 async def read_logs(request: Request, authenticated: bool = Depends(is_authenticated), changes_session: Session = Depends(get_changes_session), users_session: Session = Depends(get_users_session)):
