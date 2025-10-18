@@ -5,21 +5,21 @@
 {% block content %}
 <div style="display: flex; justify-content: space-between; align-items: center;">
     <h1>Events Calendar</h1>
-    <button id="add-event-btn" class="modal-buttons" style="padding: 0.7rem 1.5rem; font-size: 1rem; cursor: pointer;">Add Event</button>
 </div>
 
 <div class="calendar">
     <div class="calendar-header">
         <span class="month-name">{{ today.strftime('%B %Y') }}</span>
+        <button id="add-event-btn" class="add-event-button">Add Event</button>
     </div>
     <div class="calendar-grid">
-        <div class="day-name">Sun</div>
-        <div class="day-name">Mon</div>
-        <div class="day-name">Tue</div>
-        <div class="day-name">Wed</div>
-        <div class="day-name">Thu</div>
-        <div class="day-name">Fri</div>
-        <div class="day-name">Sat</div>
+        <div class="day-name"><span class="full-day-name">Sunday</span><span class="short-day-name">Sun</span></div>
+        <div class="day-name"><span class="full-day-name">Monday</span><span class="short-day-name">Mon</span></div>
+        <div class="day-name"><span class="full-day-name">Tuesday</span><span class="short-day-name">Tue</span></div>
+        <div class="day-name"><span class="full-day-name">Wednesday</span><span class="short-day-name">Wed</span></div>
+        <div class="day-name"><span class="full-day-name">Thursday</span><span class="short-day-name">Thu</span></div>
+        <div class="day-name"><span class="full-day-name">Friday</span><span class="short-day-name">Fri</span></div>
+        <div class="day-name"><span class="full-day-name">Saturday</span><span class="short-day-name">Sat</span></div>
 
         {% for week in month_days %}
             {% for day in week %}
@@ -28,10 +28,14 @@
                     <div class="events">
                         {% if day in events_map %}
                             {% for event in events_map[day] %}
-                                <div class="event" style="{% if event.embeds and event.embeds[0].thumbnail_url %}background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('{{ event.embeds[0].thumbnail_url }}');{% endif %} border-left-color: {{ event.embeds[0].color if event.embeds else 'var(--primary-color)' }};"
-                                     data-event='{{ event.model_dump_json() }}'>
+                                {% set background_style = '' %}
+                                {% if event.embeds and event.embeds[0].thumbnail_url %}
+                                    {% set background_style = "background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url(" ~ (event.embeds[0].thumbnail_url | replace('"', '\"')) ~ ");" %}
+                                {% endif %}
+                                <div class="event {% if not event.is_enabled %}disabled{% endif %}" style="{{ background_style }} border-left-color: {{ event.embeds[0].color if event.embeds else 'var(--primary-color)' }};"
+                                     data-event='{{ event.model_dump_json() | tojson }}'>
                                     <div class="event-time">{{ event.hour }}:{{ "%02d"|format(event.minute) }}</div>
-                                    <div class="event-desc">{{ event.embed_title }}</div>
+                                    <div class="event-desc">{{ (event.embed_title[:-12] if event.embed_title.endswith('Notification') else event.embed_title)|trim }}</div>
                                     <div class="event-details">
                                         <strong>Enabled:</strong> {% if event.is_enabled %}✅{% else %}❌{% endif %}<br>
                                         <strong>Repeats:</strong> {% if event.repeat_enabled %}Yes{% else %}No{% endif %}<br>
@@ -387,14 +391,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 const parts = descriptionText.split('|');
                 customTimesInput.value = parts[0].replace('CUSTOM_TIMES:', '');
                 descriptionText = parts.length > 1 ? parts[1] : '';
-            } else {
+            }
+            else {
                 customTimesInput.value = '';
             }
 
             if (descriptionText.startsWith('PLAIN_MESSAGE:')) {
                 messageTypeSelect.value = 'plain';
                 form.description.value = descriptionText.replace('PLAIN_MESSAGE:', '');
-            } else if (descriptionText.startsWith('EMBED_MESSAGE:')) {
+            }
+            else if (descriptionText.startsWith('EMBED_MESSAGE:')) {
                 messageTypeSelect.value = 'embed';
                 form.description.value = ''; // Plain description is not used for embeds
             }
@@ -458,7 +464,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const modal = document.getElementById(modalId);
             if(modal) modal.style.display = 'none';
             location.reload();
-        } else {
+        }
+        else {
             const error = await response.json();
             alert(`Failed to save event: ${error.error || 'Unknown error'}`);
         }
