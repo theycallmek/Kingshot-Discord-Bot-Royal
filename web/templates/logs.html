@@ -1,22 +1,20 @@
 {% extends "base.html" %}
 
-{% block title %}Logs - Kingshot Bot{% endblock %}
+{% block title %}Logs - DOA Dashboard{% endblock %}
 
 {% block content %}
 <h1>Log Viewer</h1>
 <div class="logs-container">
     <div class="log-section">
         <h2>Furnace Level</h2>
+        <div class="sort-headers">
+            <span class="sort-header" data-sort-by="change_date" data-table="furnace-logs" data-col="0">Date</span>
+            <span class="sort-header" data-sort-by="fid" data-table="furnace-logs" data-col="1">FID</span>
+            <span class="sort-header" data-sort-by="nickname" data-table="furnace-logs" data-col="2">Nickname</span>
+            <span class="sort-header" data-sort-by="old_furnace_lv" data-table="furnace-logs" data-col="3">Old Value</span>
+            <span class="sort-header" data-sort-by="new_furnace_lv" data-table="furnace-logs" data-col="4">New Value</span>
+        </div>
         <table id="furnace-logs">
-            <thead>
-                <tr>
-                    <th data-sort-by="change_date">Date</th>
-                    <th data-sort-by="fid">FID</th>
-                    <th data-sort-by="nickname">Nickname</th>
-                    <th data-sort-by="old_furnace_lv">Old Value</th>
-                    <th data-sort-by="new_furnace_lv">New Value</th>
-                </tr>
-            </thead>
             <tbody>
                 {% for log in furnace_changes %}
                 <tr>
@@ -32,15 +30,13 @@
     </div>
     <div class="log-section">
         <h2>Nickname</h2>
+        <div class="sort-headers">
+            <span class="sort-header" data-sort-by="change_date" data-table="nickname-logs" data-col="0">Date</span>
+            <span class="sort-header" data-sort-by="fid" data-table="nickname-logs" data-col="1">FID</span>
+            <span class="sort-header" data-sort-by="old_nickname" data-table="nickname-logs" data-col="2">Old Value</span>
+            <span class="sort-header" data-sort-by="new_nickname" data-table="nickname-logs" data-col="3">New Value</span>
+        </div>
         <table id="nickname-logs">
-            <thead>
-                <tr>
-                    <th data-sort-by="change_date">Date</th>
-                    <th data-sort-by="fid">FID</th>
-                    <th data-sort-by="old_nickname">Old Value</th>
-                    <th data-sort-by="new_nickname">New Value</th>
-                </tr>
-            </thead>
             <tbody>
                 {% for log in nickname_changes %}
                 <tr>
@@ -58,64 +54,68 @@
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    function makeTableSortable(tableId) {
+    const headers = document.querySelectorAll('.sort-header');
+    const originalOrders = {};
+
+    // Store original order for each table
+    ['furnace-logs', 'nickname-logs'].forEach(tableId => {
         const table = document.getElementById(tableId);
-        const headers = table.querySelectorAll('th');
         const tbody = table.querySelector('tbody');
-        const originalOrder = Array.from(tbody.rows);
+        originalOrders[tableId] = Array.from(tbody.rows);
+    });
 
-        headers.forEach((header, index) => {
-            header.addEventListener('click', () => {
-                const sortBy = header.dataset.sortBy;
-                let sortOrder = header.dataset.sortOrder || 'asc';
+    headers.forEach(header => {
+        header.addEventListener('click', () => {
+            const sortBy = header.dataset.sortBy;
+            const tableId = header.dataset.table;
+            const colIndex = parseInt(header.dataset.col);
+            let sortOrder = header.dataset.sortOrder || 'asc';
 
-                if (sortOrder === 'asc') {
-                    header.dataset.sortOrder = 'desc';
-                } else if (sortOrder === 'desc') {
-                    header.dataset.sortOrder = 'original';
-                } else {
-                    header.dataset.sortOrder = 'asc';
-                }
-
-                sortRows(sortBy, header.dataset.sortOrder, index);
-            });
-        });
-
-        function sortRows(sortBy, order, colIndex) {
-            const rows = Array.from(tbody.rows);
-
-            if (order === 'original') {
-                originalOrder.forEach(row => tbody.appendChild(row));
-                return;
+            if (sortOrder === 'asc') {
+                header.dataset.sortOrder = 'desc';
+            } else if (sortOrder === 'desc') {
+                header.dataset.sortOrder = 'original';
+            } else {
+                header.dataset.sortOrder = 'asc';
             }
 
-            rows.sort((a, b) => {
-                let valA = a.cells[colIndex].textContent.trim();
-                let valB = b.cells[colIndex].textContent.trim();
+            sortRows(tableId, sortBy, header.dataset.sortOrder, colIndex);
+        });
+    });
 
-                if (sortBy === 'change_date') {
-                    valA = new Date(valA);
-                    valB = new Date(valB);
-                } else if (!isNaN(valA) && !isNaN(valB)) {
-                    valA = Number(valA);
-                    valB = Number(valB);
-                }
+    function sortRows(tableId, sortBy, order, colIndex) {
+        const table = document.getElementById(tableId);
+        const tbody = table.querySelector('tbody');
+        const rows = Array.from(tbody.rows);
 
-                if (valA < valB) {
-                    return order === 'asc' ? -1 : 1;
-                }
-                if (valA > valB) {
-                    return order === 'asc' ? 1 : -1;
-                }
-                return 0;
-            });
-
-            rows.forEach(row => tbody.appendChild(row));
+        if (order === 'original') {
+            originalOrders[tableId].forEach(row => tbody.appendChild(row));
+            return;
         }
-    }
 
-    makeTableSortable('furnace-logs');
-    makeTableSortable('nickname-logs');
+        rows.sort((a, b) => {
+            let valA = a.cells[colIndex].textContent.trim();
+            let valB = b.cells[colIndex].textContent.trim();
+
+            if (sortBy === 'change_date') {
+                valA = new Date(valA);
+                valB = new Date(valB);
+            } else if (!isNaN(valA) && !isNaN(valB)) {
+                valA = Number(valA);
+                valB = Number(valB);
+            }
+
+            if (valA < valB) {
+                return order === 'asc' ? -1 : 1;
+            }
+            if (valA > valB) {
+                return order === 'asc' ? 1 : -1;
+            }
+            return 0;
+        });
+
+        rows.forEach(row => tbody.appendChild(row));
+    }
 });
 </script>
 {% endblock %}

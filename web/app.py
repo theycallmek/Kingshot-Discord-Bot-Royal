@@ -7,11 +7,13 @@ from sqlalchemy.orm import selectinload, Session
 from sqlmodel import create_engine, Session, select, SQLModel
 from .models import User, UserGiftCode, NicknameChange, FurnaceChange, AttendanceRecord, GiftCode, BearNotification, BearNotificationEmbed, NotificationDays
 import os
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, time
 from collections import defaultdict
 import calendar
 from pydantic import BaseModel
 from typing import Optional, List
+import pytz
+import re
 
 # --- Configuration ---
 SECRET_KEY = os.environ.get("SECRET_KEY", "your-secret-key")
@@ -104,17 +106,13 @@ async def read_members(request: Request, authenticated: bool = Depends(is_authen
     users = session.exec(select(User)).all()
     return templates.TemplateResponse("members.html", {"request": request, "users": users})
 
-
 def dec_to_hex(decimal_color):
     if decimal_color is None:
         return None
     return f"#{decimal_color:06x}"
 
 
-# This is an API Model (also called a DTO), not a table model.
-# It's used to structure data specifically for the frontend.
 class BearNotificationWithNickname(BaseModel):
-    # Copy all fields from BearNotification
     id: Optional[int] = None
     description: Optional[str] = None
     channel_id: Optional[int] = None
@@ -122,23 +120,19 @@ class BearNotificationWithNickname(BaseModel):
     minute: Optional[int] = None
     repeat_minutes: Optional[str] = None
     repeat_enabled: Optional[bool] = None
+    is_enabled: Optional[int] = None
     mention_type: Optional[str] = None
     notification_type: Optional[int] = None
     next_notification: Optional[datetime] = None
     created_by: Optional[int] = None
-
-    # Relations (as lists of models, not Mapped)
     embeds: List = []
     notification_days: Optional[object] = None
-
-    # Additional field
     created_by_nickname: Optional[str] = None
     embed_title: Optional[str] = None
 
     class Config:
         arbitrary_types_allowed = True
-        from_attributes = True  # This allows model_validate to work with SQLModel objects
-
+        from_attributes = True
 
 @app.get("/events", response_class=HTMLResponse)
 async def read_events(request: Request, authenticated: bool = Depends(is_authenticated), beartime_session: Session = Depends(get_beartime_session), users_session: Session = Depends(get_users_session)):
@@ -148,50 +142,81 @@ async def read_events(request: Request, authenticated: bool = Depends(is_authent
     today = date.today()
     cal = calendar.Calendar()
     month_days = cal.monthdatescalendar(today.year, today.month)
+    
+    calendar_start_date = month_days[0][0]
+    calendar_end_date = month_days[-1][-1]
 
     users = users_session.exec(select(User)).all()
     user_map = {user.fid: user.nickname for user in users}
 
     statement = select(BearNotification).options(selectinload(BearNotification.embeds), selectinload(BearNotification.notification_days))
-    events_query = beartime_session.exec(statement).all()
+    all_events_from_db = beartime_session.exec(statement).all()
 
     events_map = defaultdict(list)
-    for event in events_query:
-        nickname = user_map.get(event.created_by, "Unknown")
 
-        # Coerce repeat_minutes to string before validation to prevent type errors
+    for event in all_events_from_db:
+        if not event.next_notification:
+            continue
+
+        # Ensure repeat_minutes is a string before validation
         if isinstance(event.repeat_minutes, int):
             event.repeat_minutes = str(event.repeat_minutes)
 
-        event_with_nickname = BearNotificationWithNickname.model_validate(event)
-        event_with_nickname.created_by_nickname = nickname
+        base_event_model = BearNotificationWithNickname.model_validate(event)
+        base_event_model.created_by_nickname = user_map.get(event.created_by, "Unknown")
+        base_event_model.embed_title = event.embeds[0].title if event.embeds else "No Title"
 
-        # Add a placeholder for embed_title for events that might not have one
-        event_with_nickname.embed_title = event.embeds[0].title if event.embeds else "No Title"
+        occurrence = event.next_notification
+        if occurrence.tzinfo is None:
+            occurrence = pytz.utc.localize(occurrence)
 
-        if event_with_nickname.next_notification and event_with_nickname.next_notification.date() >= today:
-            events_map[event_with_nickname.next_notification.date()].append(event_with_nickname)
+        if event.repeat_enabled and occurrence.date() < calendar_start_date:
+            if str(event.repeat_minutes).isdigit() and int(event.repeat_minutes) > 0:
+                repeat_minutes = int(event.repeat_minutes)
+                time_diff_minutes = (datetime.combine(calendar_start_date, time.min, tzinfo=pytz.utc) - occurrence).total_seconds() / 60
+                if time_diff_minutes > 0:
+                    periods_to_jump = int(time_diff_minutes / repeat_minutes)
+                    occurrence += timedelta(minutes=repeat_minutes * periods_to_jump)
+                while occurrence.date() < calendar_start_date:
+                    occurrence += timedelta(minutes=repeat_minutes)
+            
+            elif event.repeat_minutes == "fixed" and event.notification_days:
+                 weekdays = set(map(int, event.notification_days.weekday.split('|')))
+                 day_iter = calendar_start_date
+                 found = False
+                 while day_iter <= calendar_end_date:
+                     if day_iter.weekday() in weekdays and day_iter >= event.next_notification.date():
+                         occurrence = datetime.combine(day_iter, event.next_notification.time(), tzinfo=occurrence.tzinfo)
+                         found = True
+                         break
+                     day_iter += timedelta(days=1)
+                 if not found:
+                     continue
 
-        if event_with_nickname.repeat_enabled and event_with_nickname.next_notification:
-            if event_with_nickname.repeat_minutes.isdigit():
-                repeat_minutes = int(event_with_nickname.repeat_minutes)
-                if repeat_minutes > 0:
-                    next_occurrence = event_with_nickname.next_notification + timedelta(minutes=repeat_minutes)
-                    while next_occurrence.month == today.month:
-                        if next_occurrence.date() >= today:
-                            clone = BearNotificationWithNickname.model_validate(event_with_nickname)
-                            clone.next_notification = next_occurrence
-                            events_map[next_occurrence.date()].append(clone)
-                        next_occurrence += timedelta(minutes=repeat_minutes)
-            elif event_with_nickname.repeat_minutes == "fixed" and event.notification_days:
-                weekdays = list(map(int, event.notification_days.weekday.split('|')))
-                current_date = event_with_nickname.next_notification.date()
-                while current_date.month <= today.month:
-                    if current_date.weekday() in weekdays and current_date >= today:
-                        clone = BearNotificationWithNickname.model_validate(event_with_nickname)
-                        clone.next_notification = datetime.combine(current_date, event_with_nickname.next_notification.time())
-                        events_map[current_date].append(clone)
-                    current_date += timedelta(days=1)
+        while occurrence.date() <= calendar_end_date:
+            clone = base_event_model.model_copy(deep=True)
+            clone.next_notification = occurrence
+            events_map[occurrence.date()].append(clone)
+
+            if not event.repeat_enabled:
+                break
+
+            if str(event.repeat_minutes).isdigit() and int(event.repeat_minutes) > 0:
+                occurrence += timedelta(minutes=int(event.repeat_minutes))
+            elif event.repeat_minutes == "fixed" and event.notification_days:
+                weekdays = set(map(int, event.notification_days.weekday.split('|')))
+                next_day_iter = occurrence.date() + timedelta(days=1)
+                found = False
+                while next_day_iter <= calendar_end_date:
+                    if next_day_iter.weekday() in weekdays:
+                        occurrence = datetime.combine(next_day_iter, event.next_notification.time(), tzinfo=occurrence.tzinfo)
+                        found = True
+                        break
+                    next_day_iter += timedelta(days=1)
+                if not found:
+                    break
+            else:
+                break
 
     return templates.TemplateResponse("events.html", {
         "request": request,
@@ -205,17 +230,11 @@ async def read_giftcodes(request: Request, authenticated: bool = Depends(is_auth
     if not authenticated:
         return RedirectResponse(url="/login", status_code=303)
 
-    # Fetch all gift codes
     all_codes = giftcode_session.exec(select(GiftCode)).all()
-
-    # Fetch all user redemption statuses
     user_giftcodes = giftcode_session.exec(select(UserGiftCode)).all()
-
-    # Fetch all users for nickname mapping
     users = users_session.exec(select(User)).all()
     user_map = {user.fid: user.nickname for user in users}
 
-    # Create a map of giftcode -> list of users who have redeemed it
     redemption_map = defaultdict(list)
     for ugc in user_giftcodes:
         redemption_map[ugc.giftcode].append({
@@ -232,26 +251,119 @@ async def read_giftcodes(request: Request, authenticated: bool = Depends(is_auth
 
 class EventUpdate(BaseModel):
     id: int
-    description: str
+    description: Optional[str] = None
     channel_id: int
     hour: int
     minute: int
     repeat_minutes: str
-    repeat_enabled: bool
     mention_type: str
     notification_type: int
+    is_enabled: bool = True
     next_notification: datetime
+    message_type: str
     weekdays: Optional[List[int]] = None
+    custom_times: Optional[str] = None
+    embed_title: Optional[str] = None
+    embed_description: Optional[str] = None
+    embed_color: Optional[str] = None
+    embed_footer: Optional[str] = None
+    embed_author: Optional[str] = None
+    embed_image_url: Optional[str] = None
+    embed_thumbnail_url: Optional[str] = None
+    embed_mention_message: Optional[str] = None
 
-    # Embed fields
-    embed_title: str
-    embed_description: str
-    embed_color: str
-    embed_footer: str
-    embed_author: str
-    embed_image_url: str
-    embed_thumbnail_url: str
-    embed_mention_message: str
+class EventCreate(BaseModel):
+    description: Optional[str] = None
+    channel_id: int
+    hour: int
+    minute: int
+    timezone: str
+    repeat_minutes: str
+    mention_type: str
+    notification_type: int
+    is_enabled: bool = True
+    next_notification: datetime
+    message_type: str
+    weekdays: Optional[List[int]] = None
+    custom_times: Optional[str] = None
+    embed_title: Optional[str] = None
+    embed_description: Optional[str] = None
+    embed_color: Optional[str] = None
+    embed_footer: Optional[str] = None
+    embed_author: Optional[str] = None
+    embed_image_url: Optional[str] = None
+    embed_thumbnail_url: Optional[str] = None
+    embed_mention_message: Optional[str] = None
+
+@app.post("/create_event", response_class=JSONResponse)
+async def create_event(
+    request: Request,
+    authenticated: bool = Depends(is_authenticated),
+    beartime_session: Session = Depends(get_beartime_session),
+    data: EventCreate = Body(...)
+):
+    if not authenticated:
+        return JSONResponse(content={"success": False, "error": "Unauthorized"}, status_code=401)
+
+    try:
+        full_description = ""
+        if data.notification_type == 6 and data.custom_times:
+            full_description = f"CUSTOM_TIMES:{data.custom_times}|"
+        
+        if data.message_type == 'embed':
+            full_description += "EMBED_MESSAGE:true"
+        elif data.message_type == 'plain':
+            full_description += f"PLAIN_MESSAGE:{data.description}"
+
+        if data.next_notification.tzinfo is None:
+            aware_dt = pytz.utc.localize(data.next_notification)
+        else:
+            aware_dt = data.next_notification
+
+        new_notification = BearNotification(
+            guild_id=1,
+            channel_id=data.channel_id,
+            hour=data.hour,
+            minute=data.minute,
+            timezone=data.timezone,
+            description=full_description,
+            notification_type=data.notification_type,
+            mention_type=data.mention_type,
+            repeat_enabled=1 if data.repeat_minutes and data.repeat_minutes != "0" else 0,
+            repeat_minutes=data.repeat_minutes,
+            is_enabled=1 if data.is_enabled else 0,
+            created_by=0,
+            next_notification=aware_dt.isoformat()
+        )
+        beartime_session.add(new_notification)
+        beartime_session.flush()
+
+        if data.message_type == 'embed':
+            new_embed = BearNotificationEmbed(
+                notification_id=new_notification.id,
+                title=data.embed_title,
+                description=data.embed_description,
+                color=int(data.embed_color.lstrip('#'), 16) if data.embed_color else None,
+                image_url=data.embed_image_url,
+                thumbnail_url=data.embed_thumbnail_url,
+                footer=data.embed_footer,
+                author=data.embed_author,
+                mention_message=data.embed_mention_message if data.embed_mention_message else None
+            )
+            beartime_session.add(new_embed)
+
+        if data.repeat_minutes == "fixed" and data.weekdays:
+            sorted_days = sorted(data.weekdays)
+            weekday_str = "|".join(map(str, sorted_days))
+            new_notification_days = NotificationDays(notification_id=new_notification.id, weekday=weekday_str)
+            beartime_session.add(new_notification_days)
+
+        beartime_session.commit()
+        return JSONResponse(content={"success": True, "id": new_notification.id})
+
+    except Exception as e:
+        return JSONResponse(content={"success": False, "error": str(e)}, status_code=500)
+
 
 @app.post("/update_event", response_class=JSONResponse)
 async def update_event(
@@ -267,23 +379,39 @@ async def update_event(
     if not notification:
         return JSONResponse(content={"success": False, "error": "Event not found"}, status_code=404)
 
-    # Update notification fields
-    notification.description = data.description
+    message_part = ""
+    if data.message_type == 'embed':
+        message_part = "EMBED_MESSAGE:true"
+    elif data.message_type == 'plain':
+        message_part = f"PLAIN_MESSAGE:{data.description}"
+
+    if data.notification_type == 6 and data.custom_times:
+        notification.description = f"CUSTOM_TIMES:{data.custom_times}|{message_part}"
+    else:
+        notification.description = re.sub(r"CUSTOM_TIMES:[^|]+\|", "", message_part)
+
     notification.channel_id = data.channel_id
     notification.hour = data.hour
     notification.minute = data.minute
     notification.repeat_minutes = data.repeat_minutes
     notification.mention_type = data.mention_type
     notification.notification_type = data.notification_type
-    notification.next_notification = data.next_notification
-    notification.repeat_enabled = data.repeat_enabled
+    notification.repeat_enabled = 1 if data.repeat_minutes and data.repeat_minutes != "0" else 0
+    notification.is_enabled = 1 if data.is_enabled else 0
 
-    if not notification.repeat_enabled:
-        notification.repeat_minutes = ""
+    if data.next_notification.tzinfo is None:
+        aware_dt = pytz.utc.localize(data.next_notification)
+    else:
+        aware_dt = data.next_notification
+    notification.next_notification = aware_dt.isoformat()
 
-    # Update embed fields
-    if notification.embeds:
-        embed = notification.embeds[0]
+    if data.message_type == 'embed':
+        if notification.embeds:
+            embed = notification.embeds[0]
+        else:
+            embed = BearNotificationEmbed(notification_id=notification.id)
+            beartime_session.add(embed)
+        
         embed.title = data.embed_title
         embed.description = data.embed_description
         embed.color = int(data.embed_color.lstrip('#'), 16) if data.embed_color else None
@@ -291,21 +419,16 @@ async def update_event(
         embed.author = data.embed_author
         embed.image_url = data.embed_image_url
         embed.thumbnail_url = data.embed_thumbnail_url
-        embed.mention_message = data.embed_mention_message
+        embed.mention_message = data.embed_mention_message if data.embed_mention_message else None
 
-    # Handle weekdays for fixed repeat
     if data.repeat_minutes == "fixed":
         if notification.notification_days:
-            beartime_session.delete(notification.notification_days)
-
-        if data.weekdays:
-            sorted_days = sorted(data.weekdays)
-            weekday_str = "|".join(map(str, sorted_days))
-            new_notification_days = NotificationDays(notification_id=notification.id, weekday=weekday_str)
+            notification.notification_days.weekday = "|".join(map(str, sorted(data.weekdays)))
+        elif data.weekdays:
+            new_notification_days = NotificationDays(notification_id=notification.id, weekday="|".join(map(str, sorted(data.weekdays))))
             beartime_session.add(new_notification_days)
-    else:
-        if notification.notification_days:
-            beartime_session.delete(notification.notification_days)
+    elif notification.notification_days:
+        beartime_session.delete(notification.notification_days)
 
     beartime_session.add(notification)
     beartime_session.commit()
@@ -318,19 +441,17 @@ async def read_logs(request: Request, authenticated: bool = Depends(is_authentic
     if not authenticated:
         return RedirectResponse(url="/login", status_code=303)
 
-    # Fetch all users and create a FID -> nickname map
     users = users_session.exec(select(User)).all()
     user_map = {user.fid: user.nickname for user in users}
 
     nickname_changes = changes_session.exec(select(NicknameChange)).all()
     furnace_changes = changes_session.exec(select(FurnaceChange)).all()
 
-    # Sort logs by date
     try:
         nickname_changes.sort(key=lambda x: datetime.fromisoformat(x.change_date), reverse=True)
         furnace_changes.sort(key=lambda x: datetime.fromisoformat(x.change_date), reverse=True)
-    except (ValueError, TypeError): # Handle cases where change_date might not be a valid ISO format string
-        pass # Or add more robust error handling/logging
+    except (ValueError, TypeError):
+        pass
 
     return templates.TemplateResponse("logs.html", {
         "request": request,

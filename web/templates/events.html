@@ -1,9 +1,13 @@
 {% extends "base.html" %}
 
-{% block title %}Events Calendar - Kingshot Bot{% endblock %}
+{% block title %}Events Calendar - DOA Dashboard{% endblock %}
 
 {% block content %}
-<h1>Events Calendar</h1>
+<div style="display: flex; justify-content: space-between; align-items: center;">
+    <h1>Events Calendar</h1>
+    <button id="add-event-btn" class="modal-buttons" style="padding: 0.7rem 1.5rem; font-size: 1rem; cursor: pointer;">Add Event</button>
+</div>
+
 <div class="calendar">
     <div class="calendar-header">
         <span class="month-name">{{ today.strftime('%B %Y') }}</span>
@@ -29,7 +33,7 @@
                                     <div class="event-time">{{ event.hour }}:{{ "%02d"|format(event.minute) }}</div>
                                     <div class="event-desc">{{ event.embed_title }}</div>
                                     <div class="event-details">
-                                        {{ event.created_by_nickname }}<br>
+                                        <strong>Enabled:</strong> {% if event.is_enabled %}✅{% else %}❌{% endif %}<br>
                                         <strong>Repeats:</strong> {% if event.repeat_enabled %}Yes{% else %}No{% endif %}<br>
                                     </div>
                                 </div>
@@ -42,43 +46,87 @@
     </div>
 </div>
 
+<!-- Edit Event Modal -->
 <div id="edit-event-modal" class="modal" style="display: none;">
     <div class="modal-content">
         <span class="close-button">&times;</span>
         <h2>Edit Event</h2>
         <form id="edit-event-form">
-            <input type="hidden" id="event-id" name="id">
+            <input type="hidden" id="edit-event-id" name="id">
 
-            <label for="description">Description:</label>
-            <input type="text" id="description" name="description">
-
-            <label for="channel_id">Channel ID:</label>
-            <input type="text" id="channel_id" name="channel_id">
-
-            <label for="hour">Hour:</label>
-            <input type="number" id="hour" name="hour" min="0" max="23">
-
-            <label for="minute">Minute:</label>
-            <input type="number" id="minute" name="minute" min="0" max="59">
-
-            <label for="repeat_enabled">Enable Repeats:</label>
-            <input type="checkbox" id="repeat_enabled" name="repeat_enabled">
-
-            <div id="repeat-options" style="display: none;">
-                <label for="repeat_minutes">Repeat Interval:</label>
-                <input type="text" id="repeat_minutes" name="repeat_minutes">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="edit_message_type">Message Type:</label>
+                    <select id="edit_message_type" name="message_type">
+                        <option value="plain">Plain Message</option>
+                        <option value="embed">Embed Message</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="edit_channel_id">Channel:</label>
+                    <select id="edit_channel_id" name="channel_id">
+                        <option value="1420123829484916867">🏆｜events</option>
+                        <option value="1420123824879308973">🐻｜bear</option>
+                        <option value="1420123828541198499">⚔️｜arena</option>
+                    </select>
+                </div>
             </div>
 
-            <label for="mention_type">Mention Type:</label>
-            <input type="text" id="mention_type" name="mention_type">
+            <div id="edit-plain-message-fields">
+                <label for="edit_description">Description:</label>
+                <input type="text" id="edit_description" name="description">
+            </div>
 
-            <label for="notification_type">Notification Type:</label>
-            <input type="number" id="notification_type" name="notification_type">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="edit_next_notification">Next Notification (UTC):</label>
+                    <input type="datetime-local" id="edit_next_notification" name="next_notification">
+                </div>
+                <div class="form-group">
+                    <label for="edit_repeat_minutes">Repeat Interval:</label>
+                    <select id="edit_repeat_minutes" name="repeat_minutes">
+                        <option value="0">No Repeat</option>
+                        <option value="fixed">Specific Days</option>
+                        {% for i in range(1, 15) %}
+                        <option value="{{ i * 1440 }}">{{ i }} Day(s)</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
 
-            <label for="next_notification">Next Notification:</label>
-            <input type="datetime-local" id="next_notification" name="next_notification">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="edit_mention_type">Mention Type:</label>
+                    <select id="edit_mention_type" name="mention_type">
+                        <option value="none">None</option>
+                        <option value="everyone">Everyone</option>
+                        <option value="role_1420123834853490708">DOA Event 🏆</option>
+                        <option value="role_1420123831498178792">DOA Bear 🐻</option>
+                        <option value="role_1420839639136075796">doa Bear 🐻</option>
+                        <option value="role_1420839971400712213">doa Event 🏆</option>
+                        <option value="role_1420840300880068772">TFO Bear 🐻</option>
+                        <option value="role_1420840228209299519">TFO Event 🏆</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="edit_notification_type">Notification Type:</label>
+                    <select id="edit_notification_type" name="notification_type">
+                        <option value="1">30m, 10m, 5m, 0m</option>
+                        <option value="2">10m, 5m, 0m</option>
+                        <option value="3">5m, 0m</option>
+                        <option value="4">5m</option>
+                        <option value="5">0m</option>
+                        <option value="6">Custom Times</option>
+                    </select>
+                </div>
+            </div>
 
-            <div id="weekdays-container" style="display: none;">
+            <div id="edit-custom-times-container" style="display: none;">
+                <label for="edit_custom_times">Custom Times (e.g., 60-30-10-0):</label>
+                <input type="text" id="edit_custom_times" name="custom_times">
+            </div>
+
+            <div id="edit-weekdays-container" style="display: none;">
                 <label>Weekdays:</label>
                 <div class="weekdays-checkboxes">
                     <input type="checkbox" name="weekdays" value="0"> Mon
@@ -91,37 +139,162 @@
                 </div>
             </div>
 
-            <hr>
-            <h3>Embed Details</h3>
+            <div class="form-group">
+                <label for="edit_is_enabled">Enabled:</label>
+                <input type="checkbox" id="edit_is_enabled" name="is_enabled" value="true">
+            </div>
 
-            <label for="embed_title">Title:</label>
-            <input type="text" id="embed_title" name="embed_title">
-
-            <label for="embed_description">Description:</label>
-            <textarea id="embed_description" name="embed_description" rows="3"></textarea>
-
-            <label for="embed_color">Color:</label>
-            <input type="text" id="embed_color" name="embed_color">
-
-            <label for="embed_footer">Footer:</label>
-            <input type="text" id="embed_footer" name="embed_footer">
-
-            <label for="embed_author">Author:</label>
-            <input type="text" id="embed_author" name="embed_author">
-
-            <label for="embed_image_url">Image URL:</label>
-            <input type="text" id="embed_image_url" name="embed_image_url">
-
-            <label for="embed_thumbnail_url">Thumbnail URL:</label>
-            <input type="text" id="embed_thumbnail_url" name="embed_thumbnail_url">
-
-            <label for="embed_mention_message">Mention Message:</label>
-            <input type="text" id="embed_mention_message" name="embed_mention_message">
-
+            <div id="edit-embed-fields" style="display: none;">
+                <hr>
+                <h3>Embed Details</h3>
+                <label for="edit_embed_title">Title:</label>
+                <input type="text" id="edit_embed_title" name="embed_title">
+                <label for="edit_embed_description">Description:</label>
+                <textarea id="edit_embed_description" name="embed_description" rows="3"></textarea>
+                <label for="edit_embed_color">Color:</label>
+                <input type="text" id="edit_embed_color" name="embed_color">
+                <label for="edit_embed_footer">Footer:</label>
+                <input type="text" id="edit_embed_footer" name="embed_footer">
+                <label for="edit_embed_author">Author:</label>
+                <input type="text" id="edit_embed_author" name="embed_author">
+                <label for="edit_embed_image_url">Image URL:</label>
+                <input type="text" id="edit_embed_image_url" name="embed_image_url">
+                <label for="edit_embed_thumbnail_url">Thumbnail URL:</label>
+                <input type="text" id="edit_embed_thumbnail_url" name="embed_thumbnail_url">
+                <label for="edit_embed_mention_message">Mention Message:</label>
+                <input type="text" id="edit_embed_mention_message" name="embed_mention_message">
+            </div>
 
             <div class="modal-buttons">
                 <button type="submit">Save</button>
-                <button type="button" id="cancel-button">Cancel</button>
+                <button type="button" class="cancel-button">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Add Event Modal -->
+<div id="add-event-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <span class="close-button">&times;</span>
+        <h2>Add New Event</h2>
+        <form id="add-event-form">
+            <input type="hidden" name="timezone" value="UTC">
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="add_message_type">Message Type:</label>
+                    <select id="add_message_type" name="message_type">
+                        <option value="plain">Plain Message</option>
+                        <option value="embed" selected>Embed Message</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="add_channel_id">Channel:</label>
+                    <select id="add_channel_id" name="channel_id" required>
+                        <option value="1420123829484916867">🏆｜events</option>
+                        <option value="1420123824879308973">🐻｜bear</option>
+                        <option value="1420123828541198499">⚔️｜arena</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="add-plain-message-fields">
+                <label for="add_description">Description:</label>
+                <input type="text" id="add_description" name="description">
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="add_next_notification">Next Notification (UTC):</label>
+                    <input type="datetime-local" id="add_next_notification" name="next_notification" required>
+                </div>
+                <div class="form-group">
+                    <label for="add_repeat_minutes">Repeat Interval:</label>
+                    <select id="add_repeat_minutes" name="repeat_minutes">
+                        <option value="0">No Repeat</option>
+                        <option value="fixed">Specific Days</option>
+                        {% for i in range(1, 15) %}
+                        <option value="{{ i * 1440 }}">{{ i }} Day(s)</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="add_mention_type">Mention Type:</label>
+                    <select id="add_mention_type" name="mention_type" required>
+                        <option value="none" selected>None</option>
+                        <option value="everyone">Everyone</option>
+                        <option value="role_1420123834853490708">DOA Event 🏆</option>
+                        <option value="role_1420123831498178792">DOA Bear 🐻</option>
+                        <option value="role_1420839639136075796">doa Bear 🐻</option>
+                        <option value="role_1420839971400712213">doa Event 🏆</option>
+                        <option value="role_1420840300880068772">TFO Bear 🐻</option>
+                        <option value="role_1420840228209299519">TFO Event 🏆</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="add_notification_type">Notification Type:</label>
+                    <select id="add_notification_type" name="notification_type">
+                        <option value="1">30m, 10m, 5m, 0m</option>
+                        <option value="2">10m, 5m, 0m</option>
+                        <option value="3">5m, 0m</option>
+                        <option value="4">5m</option>
+                        <option value="5" selected>0m</option>
+                        <option value="6">Custom Times</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="add-custom-times-container" style="display: none;">
+                <label for="add_custom_times">Custom Times (e.g., 60-30-10-0):</label>
+                <input type="text" id="add_custom_times" name="custom_times">
+            </div>
+
+            <div id="add-weekdays-container" style="display: none;">
+                <label>Weekdays:</label>
+                <div class="weekdays-checkboxes">
+                    <input type="checkbox" name="weekdays" value="0"> Mon
+                    <input type="checkbox" name="weekdays" value="1"> Tue
+                    <input type="checkbox" name="weekdays" value="2"> Wed
+                    <input type="checkbox" name="weekdays" value="3"> Thu
+                    <input type="checkbox" name="weekdays" value="4"> Fri
+                    <input type="checkbox" name="weekdays" value="5"> Sat
+                    <input type="checkbox" name="weekdays" value="6"> Sun
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="add_is_enabled">Enabled:</label>
+                <input type="checkbox" id="add_is_enabled" name="is_enabled" value="true" checked>
+            </div>
+
+            <div id="add-embed-fields" style="display: none;">
+                <hr>
+                <h3>Embed Details</h3>
+                <label for="add_embed_title">Title:</label>
+                <input type="text" id="add_embed_title" name="embed_title">
+                <label for="add_embed_description">Description:</label>
+                <textarea id="add_embed_description" name="embed_description" rows="3"></textarea>
+                <label for="add_embed_color">Color:</label>
+                <input type="text" id="add_embed_color" name="embed_color">
+                <label for="add_embed_footer">Footer:</label>
+                <input type="text" id="add_embed_footer" name="embed_footer" value="DOA Unified Notification System">
+                <label for="add_embed_author">Author:</label>
+                <input type="text" id="add_embed_author" name="embed_author">
+                <label for="add_embed_image_url">Image URL:</label>
+                <input type="text" id="add_embed_image_url" name="embed_image_url">
+                <label for="add_embed_thumbnail_url">Thumbnail URL:</label>
+                <input type="text" id="add_embed_thumbnail_url" name="embed_thumbnail_url">
+                <label for="add_embed_mention_message">Mention Message:</label>
+                <input type="text" id="add_embed_mention_message" name="embed_mention_message">
+            </div>
+
+            <div class="modal-buttons">
+                <button type="submit">Create</button>
+                <button type="button" class="cancel-button">Cancel</button>
             </div>
         </form>
     </div>
@@ -131,101 +304,148 @@
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    const modal = document.getElementById('edit-event-modal');
-    const closeButton = document.querySelector('.close-button');
-    const cancelButton = document.getElementById('cancel-button');
-    const form = document.getElementById('edit-event-form');
-    const weekdaysContainer = document.getElementById('weekdays-container');
-    const repeatOptions = document.getElementById('repeat-options');
-    const repeatEnabledCheckbox = document.getElementById('repeat_enabled');
+    const editModal = document.getElementById('edit-event-modal');
+    const addModal = document.getElementById('add-event-modal');
+    const addEventBtn = document.getElementById('add-event-btn');
+
+    const setupModal = (modal) => {
+        const closeButton = modal.querySelector('.close-button');
+        const cancelButton = modal.querySelector('.cancel-button');
+        const messageTypeSelect = modal.querySelector('select[name="message_type"]');
+        const plainFields = modal.querySelector('[id$="-plain-message-fields"]');
+        const embedFields = modal.querySelector('[id$="-embed-fields"]');
+        const repeatMinutesSelect = modal.querySelector('select[name="repeat_minutes"]');
+        const weekdaysContainer = modal.querySelector('[id$="-weekdays-container"]');
+        const notificationTypeSelect = modal.querySelector('select[name="notification_type"]');
+        const customTimesContainer = modal.querySelector('[id$="-custom-times-container"]');
+
+        const closeModal = () => modal.style.display = 'none';
+
+        closeButton.addEventListener('click', closeModal);
+        cancelButton.addEventListener('click', closeModal);
+        window.addEventListener('click', (event) => {
+            if (event.target == modal) closeModal();
+        });
+
+        const toggleMessageTypeFields = () => {
+            if (messageTypeSelect.value === 'embed') {
+                plainFields.style.display = 'none';
+                embedFields.style.display = 'block';
+            } else {
+                plainFields.style.display = 'block';
+                embedFields.style.display = 'none';
+            }
+        };
+
+        const toggleWeekdays = () => {
+            weekdaysContainer.style.display = repeatMinutesSelect.value === 'fixed' ? 'block' : 'none';
+        };
+
+        const toggleCustomTimes = () => {
+            customTimesContainer.style.display = notificationTypeSelect.value === '6' ? 'block' : 'none';
+        };
+
+        messageTypeSelect.addEventListener('change', toggleMessageTypeFields);
+        repeatMinutesSelect.addEventListener('change', toggleWeekdays);
+        notificationTypeSelect.addEventListener('change', toggleCustomTimes);
+
+        // Initial state
+        toggleMessageTypeFields();
+        toggleWeekdays();
+        toggleCustomTimes();
+    };
+
+    setupModal(editModal);
+    setupModal(addModal);
+
+    addEventBtn.addEventListener('click', () => {
+        addModal.style.display = 'block';
+        const messageTypeSelect = addModal.querySelector('#add_message_type');
+        messageTypeSelect.dispatchEvent(new Event('change'));
+    });
 
     document.querySelectorAll('.event').forEach(eventEl => {
         eventEl.addEventListener('click', () => {
             const eventData = JSON.parse(eventEl.dataset.event);
+            const form = document.getElementById('edit-event-form');
 
+            // Populate main fields
             form.id.value = eventData.id;
-            form.description.value = eventData.description;
             form.channel_id.value = eventData.channel_id;
-            form.hour.value = eventData.hour;
-            form.minute.value = eventData.minute;
             form.repeat_minutes.value = eventData.repeat_minutes;
             form.mention_type.value = eventData.mention_type;
             form.notification_type.value = eventData.notification_type;
             form.next_notification.value = eventData.next_notification ? eventData.next_notification.slice(0, 16) : '';
-            repeatEnabledCheckbox.checked = eventData.repeat_enabled;
+            form.is_enabled.checked = eventData.is_enabled === 1;
 
-            if (eventData.embeds && eventData.embeds.length > 0) {
-                const embed = eventData.embeds[0];
-                form.embed_title.value = embed.title;
-                form.embed_description.value = embed.description;
-                form.embed_color.value = embed.color ? `#${embed.color.toString(16).padStart(6, '0')}` : '';
-                form.embed_footer.value = embed.footer;
-                form.embed_author.value = embed.author;
-                form.embed_image_url.value = embed.image_url;
-                form.embed_thumbnail_url.value = embed.thumbnail_url;
-                form.embed_mention_message.value = embed.mention_message;
+            // Handle message type and description
+            const messageTypeSelect = form.querySelector('#edit_message_type');
+            const customTimesInput = form.querySelector('#edit_custom_times');
+            let descriptionText = eventData.description;
+
+            if (descriptionText.startsWith('CUSTOM_TIMES:')) {
+                const parts = descriptionText.split('|');
+                customTimesInput.value = parts[0].replace('CUSTOM_TIMES:', '');
+                descriptionText = parts.length > 1 ? parts[1] : '';
+            } else {
+                customTimesInput.value = '';
             }
 
-            const toggleRepeatOptions = () => {
-                if (repeatEnabledCheckbox.checked) {
-                    repeatOptions.style.display = 'block';
-                    if (form.repeat_minutes.value === 'fixed') {
-                        weekdaysContainer.style.display = 'block';
-                    } else {
-                        weekdaysContainer.style.display = 'none';
-                    }
-                } else {
-                    repeatOptions.style.display = 'none';
-                    weekdaysContainer.style.display = 'none';
-                }
-            };
+            if (descriptionText.startsWith('PLAIN_MESSAGE:')) {
+                messageTypeSelect.value = 'plain';
+                form.description.value = descriptionText.replace('PLAIN_MESSAGE:', '');
+            } else if (descriptionText.startsWith('EMBED_MESSAGE:')) {
+                messageTypeSelect.value = 'embed';
+                form.description.value = ''; // Plain description is not used for embeds
+            }
+            messageTypeSelect.dispatchEvent(new Event('change'));
+            form.querySelector('#edit_notification_type').dispatchEvent(new Event('change'));
 
-            toggleRepeatOptions(); // Initial check
-            repeatEnabledCheckbox.addEventListener('change', toggleRepeatOptions);
+            // Populate embed fields
+            const embed = eventData.embeds && eventData.embeds.length > 0 ? eventData.embeds[0] : {};
+            form.embed_title.value = embed.title || '';
+            form.embed_description.value = embed.description || '';
+            form.embed_color.value = embed.color ? `#${embed.color.toString(16).padStart(6, '0')}` : '';
+            form.embed_footer.value = embed.footer || '';
+            form.embed_author.value = embed.author || '';
+            form.embed_image_url.value = embed.image_url || '';
+            form.embed_thumbnail_url.value = embed.thumbnail_url || '';
+            form.embed_mention_message.value = embed.mention_message || '';
 
-
+            // Handle weekdays
             const weekdays = eventData.notification_days ? eventData.notification_days.weekday.split('|').map(Number) : [];
             form.querySelectorAll('input[name="weekdays"]').forEach(checkbox => {
                 checkbox.checked = weekdays.includes(parseInt(checkbox.value));
             });
+            form.querySelector('select[name="repeat_minutes"]').dispatchEvent(new Event('change'));
 
-            modal.style.display = 'block';
+            editModal.style.display = 'block';
         });
     });
 
-    const closeModal = () => {
-        modal.style.display = 'none';
-    };
-
-    closeButton.addEventListener('click', closeModal);
-    cancelButton.addEventListener('click', closeModal);
-    window.addEventListener('click', (event) => {
-        if (event.target == modal) {
-            closeModal();
-        }
-    });
-
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
+    const submitForm = async (form, url) => {
         const formData = new FormData(form);
         const data = Object.fromEntries(formData.entries());
-        data.id = parseInt(data.id);
+
+        const nextNotificationValue = data.next_notification;
+        if (nextNotificationValue) {
+            const date = new Date(nextNotificationValue);
+            data.hour = date.getHours();
+            data.minute = date.getMinutes();
+        }
+
+        // Convert types
+        if (data.id) data.id = parseInt(data.id);
         data.channel_id = parseInt(data.channel_id);
-        data.hour = parseInt(data.hour);
-        data.minute = parseInt(data.minute);
         data.notification_type = parseInt(data.notification_type);
         data.next_notification = new Date(data.next_notification).toISOString();
-        data.repeat_enabled = repeatEnabledCheckbox.checked;
-
-        if (!data.repeat_enabled) {
-            data.repeat_minutes = "";
-        }
+        data.is_enabled = form.querySelector('input[name="is_enabled"]').checked;
 
         if (data.repeat_minutes === 'fixed') {
             data.weekdays = Array.from(form.querySelectorAll('input[name="weekdays"]:checked')).map(cb => parseInt(cb.value));
         }
 
-        const response = await fetch('/update_event', {
+        const response = await fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -234,20 +454,24 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (response.ok) {
-            closeModal();
+            const modalId = form.id.replace('-form', '-modal');
+            const modal = document.getElementById(modalId);
+            if(modal) modal.style.display = 'none';
             location.reload();
         } else {
             const error = await response.json();
-            alert('Failed to save event: ' + (error.error || 'Unknown error'));
+            alert(`Failed to save event: ${error.error || 'Unknown error'}`);
         }
+    };
+
+    document.getElementById('edit-event-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        submitForm(e.target, '/update_event');
     });
 
-    document.getElementById('repeat_minutes').addEventListener('input', (e) => {
-        if (repeatEnabledCheckbox.checked && e.target.value === 'fixed') {
-            weekdaysContainer.style.display = 'block';
-        } else {
-            weekdaysContainer.style.display = 'none';
-        }
+    document.getElementById('add-event-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        submitForm(e.target, '/create_event');
     });
 });
 </script>
