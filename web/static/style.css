@@ -249,15 +249,18 @@ tbody tr:hover {
 .calendar {
     background-color: var(--surface-color);
     border-radius: 8px;
-    padding: 1.5rem;
+    padding: 1.5rem 3px;
     border: 1px solid var(--border-color);
     max-width: 900px;
-    margin: 0 auto;
+    margin: 0 3px;
 }
 
 .calendar-header {
-    text-align: center;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     margin-bottom: 1.5rem;
+    padding: 0 10px;
 }
 
 .month-name {
@@ -269,7 +272,7 @@ tbody tr:hover {
 .calendar-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 5px;
+    gap: 1px;
 }
 
 .day-name {
@@ -283,7 +286,7 @@ tbody tr:hover {
     background-color: var(--background-color);
     border: 1px solid var(--border-color);
     border-radius: 4px;
-    min-height: 120px;
+    min-height: 100px;
     padding: 0.5rem;
 }
 
@@ -312,10 +315,10 @@ tbody tr:hover {
 
 .event {
     background-color: var(--surface-color);
-    padding: 0.3rem;
+    padding: 0.2rem;
     border-radius: 3px;
-    margin-bottom: 0.3rem;
-    font-size: 0.8rem;
+    margin-bottom: 0.2rem;
+    font-size: 0.7rem;
     white-space: normal;
     word-break: break-all;
     max-width: 100%;
@@ -325,21 +328,30 @@ tbody tr:hover {
     color: white;
 }
 
+.event.disabled {
+    opacity: 0.5;
+}
+
 .event-time {
     font-weight: bold;
     margin-right: 0.5em;
 }
 
 .event-details {
-    line-height: 1.2;
-    margin-top: 0.3rem;
+    font-size: 0.6rem;
+    line-height: 1.1;
+    margin-top: 0.2rem;
+}
+
+.short-day-name {
+    display: none;
 }
 
 /* Modal Styles */
 .modal {
     display: none;
     position: fixed;
-    z-index: 1000;
+    z-index: 1002; /* Changed from 1000 to 1002 */
     left: 0;
     top: 0;
     width: 100%;
@@ -473,10 +485,6 @@ tbody tr:hover {
     gap: 2rem;
 }
 
-.log-section {
-    flex: 1;
-}
-
 .log-section h2 {
     color: var(--primary-color);
     border-bottom: 2px solid var(--primary-color);
@@ -492,6 +500,10 @@ body.light-mode {
     --header-color: #000000;
     --border-color: #dddddd;
     --hover-color: #eeeeee;
+}
+
+body.light-mode .event.disabled::before {
+    background-image: none;
 }
 
 body.light-mode .modal-content input[type="text"],
@@ -574,6 +586,22 @@ body.light-mode .modal-content select {
     border-radius: 3px;
 }
 
+.event.disabled::before {
+    background-image: linear-gradient(rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.2));
+}
+
+.month-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
+.add-event-button {
+    padding: 0.2rem 0.5rem; /* Further reduced padding */
+    font-size: 0.7rem;
+}
+
 @media (max-width: 768px) {
     .main-container {
         flex-direction: column;
@@ -583,7 +611,7 @@ body.light-mode .modal-content select {
 
     .sidebar {
         position: fixed;
-        left: -250px;
+        left: -290px;
         top: 0;
         width: 250px;
         height: 100%;
@@ -597,7 +625,7 @@ body.light-mode .modal-content select {
     }
 
     .content {
-        padding: 1rem;
+        padding: 1rem 2px;
         margin-left: 0;
     }
 
@@ -653,5 +681,38 @@ body.light-mode .modal-content select {
 
     .card-details {
         flex-direction: column;
+    }
+
+    /* Calendar on Mobile */
+    .full-day-name {
+        display: none;
+    }
+
+    .short-day-name {
+        display: inline;
+    }
+
+    .day {
+        min-height: 60px;
+        padding: 0.1rem;
+    }
+
+    .day-number {
+        font-size: 0.6rem;
+    }
+
+    .event {
+        font-size: 0.5rem;
+        padding: 0;
+        margin-bottom: 0.1rem;
+        line-height: 1.1;
+    }
+
+    .event-time {
+        display: none;
+    }
+
+    .event-details {
+        display: none;
     }
 }

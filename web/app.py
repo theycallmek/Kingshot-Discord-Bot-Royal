@@ -111,6 +111,18 @@ def dec_to_hex(decimal_color):
         return None
     return f"#{decimal_color:06x}"
 
+class BearNotificationEmbedPydantic(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    color: Optional[int] = None
+    image_url: Optional[str] = None
+    thumbnail_url: Optional[str] = None
+    footer: Optional[str] = None
+    author: Optional[str] = None
+    mention_message: Optional[str] = None
+
+    class Config:
+        from_attributes = True
 
 class BearNotificationWithNickname(BaseModel):
     id: Optional[int] = None
@@ -125,7 +137,7 @@ class BearNotificationWithNickname(BaseModel):
     notification_type: Optional[int] = None
     next_notification: Optional[datetime] = None
     created_by: Optional[int] = None
-    embeds: List = []
+    embeds: List[BearNotificationEmbedPydantic] = []
     notification_days: Optional[object] = None
     created_by_nickname: Optional[str] = None
     embed_title: Optional[str] = None
