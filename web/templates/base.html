@@ -7,8 +7,13 @@
     <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}">
 </head>
 <body>
+    <div class="hamburger" id="hamburger-menu">
+        <div></div>
+        <div></div>
+        <div></div>
+    </div>
     <div class="main-container">
-        <div class="sidebar">
+        <div class="sidebar" id="sidebar">
             <img src="/static/images/doa_skull_and_crossbones.webp" alt="Logo" class="logo">
             <h2>DOA Dashboard</h2>
             <ul>
@@ -37,6 +42,10 @@
         if (localStorage.getItem('theme') === 'light') {
             document.body.classList.add('light-mode');
         }
+
+        document.getElementById('hamburger-menu').addEventListener('click', () => {
+            document.getElementById('sidebar').classList.toggle('active');
+        });
     </script>
     {% block scripts %}{% endblock %}
 </body>

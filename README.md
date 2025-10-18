@@ -1,5 +1,7 @@
 # Kingshot Discord Bot
 
+This project includes a web GUI for easy management and visualization of bot data. The web GUI was created by **RoyalT**.
+
 Kingshot Discord Bot that supports alliance management, event reminders and attendance tracking, gift code redemption, minister appointment planning and more. This bot is free, open source and self-hosted. This bot is specifically designed for [Kingshot](https://www.centurygames.com/games/kingshot/).
 
 ## 🖥️ Prerequisites

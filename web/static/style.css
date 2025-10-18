@@ -535,3 +535,123 @@ body.light-mode .modal-content select {
 #theme-toggle-button:hover {
     opacity: 0.9;
 }
+
+.hamburger {
+    display: none;
+    cursor: pointer;
+    padding: 1rem;
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    z-index: 1001;
+    background-color: var(--surface-color);
+    border-radius: 5px;
+    border: 1px solid var(--border-color);
+}
+
+.hamburger div {
+    width: 25px;
+    height: 3px;
+    background-color: var(--text-color);
+    margin: 5px 0;
+    transition: 0.4s;
+}
+
+.event {
+    position: relative;
+    z-index: 1;
+}
+
+.event::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: -1;
+    border-radius: 3px;
+}
+
+@media (max-width: 768px) {
+    .main-container {
+        flex-direction: column;
+        border: none;
+        box-shadow: none;
+    }
+
+    .sidebar {
+        position: fixed;
+        left: -250px;
+        top: 0;
+        width: 250px;
+        height: 100%;
+        z-index: 1000;
+        transition: left 0.3s ease;
+        border-right: 1px solid var(--border-color);
+    }
+
+    .sidebar.active {
+        left: 0;
+    }
+
+    .content {
+        padding: 1rem;
+        margin-left: 0;
+    }
+
+    .hamburger {
+        display: block;
+    }
+
+    /* Logs Page on Mobile */
+    .logs-container {
+        flex-direction: column;
+    }
+
+    /* Tables on Mobile */
+    table, thead, tbody, th, td, tr {
+        display: block;
+    }
+
+    thead tr {
+        position: absolute;
+        top: -9999px;
+        left: -9999px;
+    }
+
+    tr {
+        margin-bottom: 1rem;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 1rem;
+    }
+
+    td {
+        border: none;
+        border-bottom: 1px solid var(--border-color);
+        position: relative;
+        padding-left: 50%;
+        text-align: right;
+    }
+
+    td:last-child {
+        border-bottom: none;
+    }
+
+    td:before {
+        position: absolute;
+        left: 6px;
+        width: 45%;
+        padding-right: 10px;
+        white-space: nowrap;
+        text-align: left;
+        font-weight: bold;
+        content: attr(data-label);
+    }
+
+    .card-details {
+        flex-direction: column;
+    }
+}
