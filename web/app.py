@@ -104,18 +104,41 @@ async def read_members(request: Request, authenticated: bool = Depends(is_authen
     users = session.exec(select(User)).all()
     return templates.TemplateResponse("members.html", {"request": request, "users": users})
 
+
 def dec_to_hex(decimal_color):
     if decimal_color is None:
         return None
     return f"#{decimal_color:06x}"
 
+
 # This is an API Model (also called a DTO), not a table model.
 # It's used to structure data specifically for the frontend.
-class BearNotificationWithNickname(BearNotification):
+class BearNotificationWithNickname(BaseModel):
+    # Copy all fields from BearNotification
+    id: Optional[int] = None
+    description: Optional[str] = None
+    channel_id: Optional[int] = None
+    hour: Optional[int] = None
+    minute: Optional[int] = None
+    repeat_minutes: Optional[str] = None
+    repeat_enabled: Optional[bool] = None
+    mention_type: Optional[str] = None
+    notification_type: Optional[int] = None
+    next_notification: Optional[datetime] = None
+    created_by: Optional[int] = None
+
+    # Relations (as lists of models, not Mapped)
+    embeds: List = []
+    notification_days: Optional[object] = None
+
+    # Additional field
     created_by_nickname: Optional[str] = None
+    embed_title: Optional[str] = None
 
     class Config:
         arbitrary_types_allowed = True
+        from_attributes = True  # This allows model_validate to work with SQLModel objects
+
 
 @app.get("/events", response_class=HTMLResponse)
 async def read_events(request: Request, authenticated: bool = Depends(is_authenticated), beartime_session: Session = Depends(get_beartime_session), users_session: Session = Depends(get_users_session)):
@@ -135,6 +158,10 @@ async def read_events(request: Request, authenticated: bool = Depends(is_authent
     events_map = defaultdict(list)
     for event in events_query:
         nickname = user_map.get(event.created_by, "Unknown")
+
+        # Coerce repeat_minutes to string before validation to prevent type errors
+        if isinstance(event.repeat_minutes, int):
+            event.repeat_minutes = str(event.repeat_minutes)
 
         event_with_nickname = BearNotificationWithNickname.model_validate(event)
         event_with_nickname.created_by_nickname = nickname
