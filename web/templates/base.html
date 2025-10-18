@@ -7,22 +7,24 @@
     <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}">
 </head>
 <body>
-    <div class="sidebar">
-        <h2>Kingshot Bot</h2>
-        <ul>
-            <li><a href="/" {% if request.url.path == '/' %}class="active"{% endif %}>Dashboard</a></li>
-            <li><a href="/members" {% if request.url.path == '/members' %}class="active"{% endif %}>Members</a></li>
-            <li><a href="/events" {% if request.url.path == '/events' %}class="active"{% endif %}>Events</a></li>
-            <li><a href="/giftcodes" {% if request.url.path == '/giftcodes' %}class="active"{% endif %}>Gift Codes</a></li>
-            <li><a href="/logs" {% if request.url.path == '/logs' %}class="active"{% endif %}>Logs</a></li>
-            <li><a href="/logout">Logout</a></li>
-        </ul>
-        <div class="theme-toggle">
-            <button id="theme-toggle-button">Toggle Theme</button>
+    <div class="main-container">
+        <div class="sidebar">
+            <h2>Kingshot Bot</h2>
+            <ul>
+                <li><a href="/" {% if request.url.path == '/' %}class="active"{% endif %}>Dashboard</a></li>
+                <li><a href="/members" {% if request.url.path == '/members' %}class="active"{% endif %}>Members</a></li>
+                <li><a href="/events" {% if request.url.path == '/events' %}class="active"{% endif %}>Events</a></li>
+                <li><a href="/giftcodes" {% if request.url.path == '/giftcodes' %}class="active"{% endif %}>Gift Codes</a></li>
+                <li><a href="/logs" {% if request.url.path == '/logs' %}class="active"{% endif %}>Logs</a></li>
+                <li><a href="/logout">Logout</a></li>
+            </ul>
+            <div class="theme-toggle">
+                <button id="theme-toggle-button">Toggle Theme</button>
+            </div>
         </div>
-    </div>
-    <div class="content">
-        {% block content %}{% endblock %}
+        <div class="content">
+            {% block content %}{% endblock %}
+        </div>
     </div>
     <script>
         document.getElementById('theme-toggle-button').addEventListener('click', () => {

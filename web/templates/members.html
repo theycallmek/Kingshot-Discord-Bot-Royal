@@ -15,10 +15,14 @@
     {% for user in users %}
     <div class="member-card" data-nickname="{{ user.nickname }}" data-fid="{{ user.fid }}" data-furnace_lv="{{ user.furnace_lv }}" data-kid="{{ user.kid }}" data-alliance="{{ user.alliance }}">
         <h3>{{ user.nickname }}</h3>
-        <p><strong>FID:</strong> {{ user.fid }}</p>
-        <p><strong>Furnace Level:</strong> {{ user.furnace_lv }}</p>
-        <p><strong>KID:</strong> {{ user.kid }}</p>
-        <p><strong>Alliance:</strong> {{ user.alliance }}</p>
+        <div class="card-details">
+            <p><strong>FID:</strong> {{ user.fid }}</p>
+            <p><strong>Furnace:</strong> {{ user.furnace_lv }}</p>
+        </div>
+        <div class="card-details">
+            <p><strong>KID:</strong> {{ user.kid }}</p>
+            <p><strong>Alliance:</strong> {{ user.alliance }}</p>
+        </div>
     </div>
     {% endfor %}
 </div>

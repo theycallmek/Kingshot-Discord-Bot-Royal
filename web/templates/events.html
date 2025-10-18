@@ -24,7 +24,7 @@
                     <div class="events">
                         {% if day in events_map %}
                             {% for event in events_map[day] %}
-                                <div class="event" style="background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url({{ event.embed_thumbnail_url }}); border-left-color: {{ event.embed_color }};"
+                                <div class="event" style="{% if event.embeds and event.embeds[0].thumbnail_url %}background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('{{ event.embeds[0].thumbnail_url }}');{% endif %} border-left-color: {{ event.embeds[0].color if event.embeds else 'var(--primary-color)' }};"
                                      data-event='{{ event.model_dump_json() }}'>
                                     <div class="event-time">{{ event.hour }}:{{ "%02d"|format(event.minute) }}</div>
                                     <div class="event-desc">{{ event.embed_title }}</div>
@@ -194,6 +194,7 @@ document.addEventListener('DOMContentLoaded', () => {
         data.minute = parseInt(data.minute);
         data.notification_type = parseInt(data.notification_type);
         data.next_notification = new Date(data.next_notification).toISOString();
+        data.repeat_enabled = document.getElementById('repeat_minutes').value ? true : false;
 
         if (data.repeat_minutes === 'fixed') {
             data.weekdays = Array.from(form.querySelectorAll('input[name="weekdays"]:checked')).map(cb => parseInt(cb.value));

@@ -237,6 +237,7 @@ class EventUpdate(BaseModel):
     hour: int
     minute: int
     repeat_minutes: str
+    repeat_enabled: bool
     mention_type: str
     notification_type: int
     next_notification: datetime
@@ -275,6 +276,7 @@ async def update_event(
     notification.mention_type = data.mention_type
     notification.notification_type = data.notification_type
     notification.next_notification = data.next_notification
+    notification.repeat_enabled = True if data.repeat_minutes else False
 
     # Update embed fields
     if notification.embeds:
@@ -298,6 +300,9 @@ async def update_event(
             weekday_str = "|".join(map(str, sorted_days))
             new_notification_days = NotificationDays(notification_id=notification.id, weekday=weekday_str)
             beartime_session.add(new_notification_days)
+    else:
+        if notification.notification_days:
+            beartime_session.delete(notification.notification_days)
 
     beartime_session.add(notification)
     beartime_session.commit()
