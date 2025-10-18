@@ -61,8 +61,13 @@
             <label for="minute">Minute:</label>
             <input type="number" id="minute" name="minute" min="0" max="59">
 
-            <label for="repeat_minutes">Repeat Interval:</label>
-            <input type="text" id="repeat_minutes" name="repeat_minutes">
+            <label for="repeat_enabled">Enable Repeats:</label>
+            <input type="checkbox" id="repeat_enabled" name="repeat_enabled">
+
+            <div id="repeat-options" style="display: none;">
+                <label for="repeat_minutes">Repeat Interval:</label>
+                <input type="text" id="repeat_minutes" name="repeat_minutes">
+            </div>
 
             <label for="mention_type">Mention Type:</label>
             <input type="text" id="mention_type" name="mention_type">
@@ -131,6 +136,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const cancelButton = document.getElementById('cancel-button');
     const form = document.getElementById('edit-event-form');
     const weekdaysContainer = document.getElementById('weekdays-container');
+    const repeatOptions = document.getElementById('repeat-options');
+    const repeatEnabledCheckbox = document.getElementById('repeat_enabled');
 
     document.querySelectorAll('.event').forEach(eventEl => {
         eventEl.addEventListener('click', () => {
@@ -145,6 +152,7 @@ document.addEventListener('DOMContentLoaded', () => {
             form.mention_type.value = eventData.mention_type;
             form.notification_type.value = eventData.notification_type;
             form.next_notification.value = eventData.next_notification ? eventData.next_notification.slice(0, 16) : '';
+            repeatEnabledCheckbox.checked = eventData.repeat_enabled;
 
             if (eventData.embeds && eventData.embeds.length > 0) {
                 const embed = eventData.embeds[0];
@@ -158,15 +166,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 form.embed_mention_message.value = embed.mention_message;
             }
 
-            if (eventData.repeat_minutes === 'fixed') {
-                weekdaysContainer.style.display = 'block';
-                const weekdays = eventData.notification_days ? eventData.notification_days.weekday.split('|').map(Number) : [];
-                form.querySelectorAll('input[name="weekdays"]').forEach(checkbox => {
-                    checkbox.checked = weekdays.includes(parseInt(checkbox.value));
-                });
-            } else {
-                weekdaysContainer.style.display = 'none';
-            }
+            const toggleRepeatOptions = () => {
+                if (repeatEnabledCheckbox.checked) {
+                    repeatOptions.style.display = 'block';
+                    if (form.repeat_minutes.value === 'fixed') {
+                        weekdaysContainer.style.display = 'block';
+                    } else {
+                        weekdaysContainer.style.display = 'none';
+                    }
+                } else {
+                    repeatOptions.style.display = 'none';
+                    weekdaysContainer.style.display = 'none';
+                }
+            };
+
+            toggleRepeatOptions(); // Initial check
+            repeatEnabledCheckbox.addEventListener('change', toggleRepeatOptions);
+
+
+            const weekdays = eventData.notification_days ? eventData.notification_days.weekday.split('|').map(Number) : [];
+            form.querySelectorAll('input[name="weekdays"]').forEach(checkbox => {
+                checkbox.checked = weekdays.includes(parseInt(checkbox.value));
+            });
 
             modal.style.display = 'block';
         });
@@ -194,7 +215,11 @@ document.addEventListener('DOMContentLoaded', () => {
         data.minute = parseInt(data.minute);
         data.notification_type = parseInt(data.notification_type);
         data.next_notification = new Date(data.next_notification).toISOString();
-        data.repeat_enabled = document.getElementById('repeat_minutes').value ? true : false;
+        data.repeat_enabled = repeatEnabledCheckbox.checked;
+
+        if (!data.repeat_enabled) {
+            data.repeat_minutes = "";
+        }
 
         if (data.repeat_minutes === 'fixed') {
             data.weekdays = Array.from(form.querySelectorAll('input[name="weekdays"]:checked')).map(cb => parseInt(cb.value));
@@ -218,7 +243,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('repeat_minutes').addEventListener('input', (e) => {
-        if (e.target.value === 'fixed') {
+        if (repeatEnabledCheckbox.checked && e.target.value === 'fixed') {
             weekdaysContainer.style.display = 'block';
         } else {
             weekdaysContainer.style.display = 'none';

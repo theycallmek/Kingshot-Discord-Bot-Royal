@@ -276,7 +276,10 @@ async def update_event(
     notification.mention_type = data.mention_type
     notification.notification_type = data.notification_type
     notification.next_notification = data.next_notification
-    notification.repeat_enabled = True if data.repeat_minutes else False
+    notification.repeat_enabled = data.repeat_enabled
+
+    if not notification.repeat_enabled:
+        notification.repeat_minutes = ""
 
     # Update embed fields
     if notification.embeds:
