@@ -4,34 +4,118 @@
 
 {% block content %}
 <h1>Log Viewer</h1>
-<table>
-    <thead>
-        <tr>
-            <th>Date</th>
-            <th>FID</th>
-            <th>Nickname</th>
-            <th>Change Type</th>
-            <th>Old Value</th>
-            <th>New Value</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for log in logs %}
-        <tr>
-            <td>{{ log.change_date }}</td>
-            <td>{{ log.fid }}</td>
-            <td>{{ user_map.get(log.fid, 'N/A') }}</td>
-            {% if log.__tablename__ == 'nickname_changes' %}
-                <td>Nickname</td>
-                <td>{{ log.old_nickname }}</td>
-                <td>{{ log.new_nickname }}</td>
-            {% elif log.__tablename__ == 'furnace_changes' %}
-                <td>Furnace Level</td>
-                <td>{{ log.old_furnace_lv }}</td>
-                <td>{{ log.new_furnace_lv }}</td>
-            {% endif %}
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<div class="logs-container">
+    <div class="log-section">
+        <h2>Furnace Level</h2>
+        <table id="furnace-logs">
+            <thead>
+                <tr>
+                    <th data-sort-by="change_date">Date</th>
+                    <th data-sort-by="fid">FID</th>
+                    <th data-sort-by="nickname">Nickname</th>
+                    <th data-sort-by="old_furnace_lv">Old Value</th>
+                    <th data-sort-by="new_furnace_lv">New Value</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in furnace_changes %}
+                <tr>
+                    <td>{{ log.change_date }}</td>
+                    <td>{{ log.fid }}</td>
+                    <td>{{ user_map.get(log.fid, 'N/A') }}</td>
+                    <td>{{ log.old_furnace_lv }}</td>
+                    <td>{{ log.new_furnace_lv }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="log-section">
+        <h2>Nickname</h2>
+        <table id="nickname-logs">
+            <thead>
+                <tr>
+                    <th data-sort-by="change_date">Date</th>
+                    <th data-sort-by="fid">FID</th>
+                    <th data-sort-by="old_nickname">Old Value</th>
+                    <th data-sort-by="new_nickname">New Value</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in nickname_changes %}
+                <tr>
+                    <td>{{ log.change_date }}</td>
+                    <td>{{ log.fid }}</td>
+                    <td>{{ log.old_nickname }}</td>
+                    <td>{{ log.new_nickname }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    function makeTableSortable(tableId) {
+        const table = document.getElementById(tableId);
+        const headers = table.querySelectorAll('th');
+        const tbody = table.querySelector('tbody');
+        const originalOrder = Array.from(tbody.rows);
+
+        headers.forEach((header, index) => {
+            header.addEventListener('click', () => {
+                const sortBy = header.dataset.sortBy;
+                let sortOrder = header.dataset.sortOrder || 'asc';
+
+                if (sortOrder === 'asc') {
+                    header.dataset.sortOrder = 'desc';
+                } else if (sortOrder === 'desc') {
+                    header.dataset.sortOrder = 'original';
+                } else {
+                    header.dataset.sortOrder = 'asc';
+                }
+
+                sortRows(sortBy, header.dataset.sortOrder, index);
+            });
+        });
+
+        function sortRows(sortBy, order, colIndex) {
+            const rows = Array.from(tbody.rows);
+
+            if (order === 'original') {
+                originalOrder.forEach(row => tbody.appendChild(row));
+                return;
+            }
+
+            rows.sort((a, b) => {
+                let valA = a.cells[colIndex].textContent.trim();
+                let valB = b.cells[colIndex].textContent.trim();
+
+                if (sortBy === 'change_date') {
+                    valA = new Date(valA);
+                    valB = new Date(valB);
+                } else if (!isNaN(valA) && !isNaN(valB)) {
+                    valA = Number(valA);
+                    valB = Number(valB);
+                }
+
+                if (valA < valB) {
+                    return order === 'asc' ? -1 : 1;
+                }
+                if (valA > valB) {
+                    return order === 'asc' ? 1 : -1;
+                }
+                return 0;
+            });
+
+            rows.forEach(row => tbody.appendChild(row));
+        }
+    }
+
+    makeTableSortable('furnace-logs');
+    makeTableSortable('nickname-logs');
+});
+</script>
 {% endblock %}

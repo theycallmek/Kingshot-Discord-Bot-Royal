@@ -25,11 +25,7 @@
                         {% if day in events_map %}
                             {% for event in events_map[day] %}
                                 <div class="event" style="background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url({{ event.embed_thumbnail_url }}); border-left-color: {{ event.embed_color }};"
-                                     data-id="{{ event.id }}"
-                                     data-title="{{ event.embed_title }}"
-                                     data-hour="{{ event.hour }}"
-                                     data-minute="{{ event.minute }}"
-                                     data-repeats="{{ event.repeat_enabled }}">
+                                     data-event='{{ event.model_dump_json() }}'>
                                     <div class="event-time">{{ event.hour }}:{{ "%02d"|format(event.minute) }}</div>
                                     <div class="event-desc">{{ event.embed_title }}</div>
                                     <div class="event-details">
@@ -52,14 +48,72 @@
         <h2>Edit Event</h2>
         <form id="edit-event-form">
             <input type="hidden" id="event-id" name="id">
-            <label for="event-title">Title:</label>
-            <input type="text" id="event-title" name="embed_title">
-            <label for="event-hour">Hour:</label>
-            <input type="number" id="event-hour" name="hour" min="0" max="23">
-            <label for="event-minute">Minute:</label>
-            <input type="number" id="event-minute" name="minute" min="0" max="59">
-            <label for="event-repeats">Repeats:</label>
-            <input type="checkbox" id="event-repeats" name="repeat_enabled">
+
+            <label for="description">Description:</label>
+            <input type="text" id="description" name="description">
+
+            <label for="channel_id">Channel ID:</label>
+            <input type="text" id="channel_id" name="channel_id">
+
+            <label for="hour">Hour:</label>
+            <input type="number" id="hour" name="hour" min="0" max="23">
+
+            <label for="minute">Minute:</label>
+            <input type="number" id="minute" name="minute" min="0" max="59">
+
+            <label for="repeat_minutes">Repeat Interval:</label>
+            <input type="text" id="repeat_minutes" name="repeat_minutes">
+
+            <label for="mention_type">Mention Type:</label>
+            <input type="text" id="mention_type" name="mention_type">
+
+            <label for="notification_type">Notification Type:</label>
+            <input type="number" id="notification_type" name="notification_type">
+
+            <label for="next_notification">Next Notification:</label>
+            <input type="datetime-local" id="next_notification" name="next_notification">
+
+            <div id="weekdays-container" style="display: none;">
+                <label>Weekdays:</label>
+                <div class="weekdays-checkboxes">
+                    <input type="checkbox" name="weekdays" value="0"> Mon
+                    <input type="checkbox" name="weekdays" value="1"> Tue
+                    <input type="checkbox" name="weekdays" value="2"> Wed
+                    <input type="checkbox" name="weekdays" value="3"> Thu
+                    <input type="checkbox" name="weekdays" value="4"> Fri
+                    <input type="checkbox" name="weekdays" value="5"> Sat
+                    <input type="checkbox" name="weekdays" value="6"> Sun
+                </div>
+            </div>
+
+            <hr>
+            <h3>Embed Details</h3>
+
+            <label for="embed_title">Title:</label>
+            <input type="text" id="embed_title" name="embed_title">
+
+            <label for="embed_description">Description:</label>
+            <textarea id="embed_description" name="embed_description" rows="3"></textarea>
+
+            <label for="embed_color">Color:</label>
+            <input type="text" id="embed_color" name="embed_color">
+
+            <label for="embed_footer">Footer:</label>
+            <input type="text" id="embed_footer" name="embed_footer">
+
+            <label for="embed_author">Author:</label>
+            <input type="text" id="embed_author" name="embed_author">
+
+            <label for="embed_image_url">Image URL:</label>
+            <input type="text" id="embed_image_url" name="embed_image_url">
+
+            <label for="embed_thumbnail_url">Thumbnail URL:</label>
+            <input type="text" id="embed_thumbnail_url" name="embed_thumbnail_url">
+
+            <label for="embed_mention_message">Mention Message:</label>
+            <input type="text" id="embed_mention_message" name="embed_mention_message">
+
+
             <div class="modal-buttons">
                 <button type="submit">Save</button>
                 <button type="button" id="cancel-button">Cancel</button>
@@ -68,6 +122,7 @@
     </div>
 </div>
 {% endblock %}
+
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', () => {
@@ -75,14 +130,44 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeButton = document.querySelector('.close-button');
     const cancelButton = document.getElementById('cancel-button');
     const form = document.getElementById('edit-event-form');
+    const weekdaysContainer = document.getElementById('weekdays-container');
 
     document.querySelectorAll('.event').forEach(eventEl => {
         eventEl.addEventListener('click', () => {
-            document.getElementById('event-id').value = eventEl.dataset.id;
-            document.getElementById('event-title').value = eventEl.dataset.title;
-            document.getElementById('event-hour').value = eventEl.dataset.hour;
-            document.getElementById('event-minute').value = eventEl.dataset.minute;
-            document.getElementById('event-repeats').checked = eventEl.dataset.repeats.toLowerCase() === 'true';
+            const eventData = JSON.parse(eventEl.dataset.event);
+
+            form.id.value = eventData.id;
+            form.description.value = eventData.description;
+            form.channel_id.value = eventData.channel_id;
+            form.hour.value = eventData.hour;
+            form.minute.value = eventData.minute;
+            form.repeat_minutes.value = eventData.repeat_minutes;
+            form.mention_type.value = eventData.mention_type;
+            form.notification_type.value = eventData.notification_type;
+            form.next_notification.value = eventData.next_notification ? eventData.next_notification.slice(0, 16) : '';
+
+            if (eventData.embeds && eventData.embeds.length > 0) {
+                const embed = eventData.embeds[0];
+                form.embed_title.value = embed.title;
+                form.embed_description.value = embed.description;
+                form.embed_color.value = embed.color ? `#${embed.color.toString(16).padStart(6, '0')}` : '';
+                form.embed_footer.value = embed.footer;
+                form.embed_author.value = embed.author;
+                form.embed_image_url.value = embed.image_url;
+                form.embed_thumbnail_url.value = embed.thumbnail_url;
+                form.embed_mention_message.value = embed.mention_message;
+            }
+
+            if (eventData.repeat_minutes === 'fixed') {
+                weekdaysContainer.style.display = 'block';
+                const weekdays = eventData.notification_days ? eventData.notification_days.weekday.split('|').map(Number) : [];
+                form.querySelectorAll('input[name="weekdays"]').forEach(checkbox => {
+                    checkbox.checked = weekdays.includes(parseInt(checkbox.value));
+                });
+            } else {
+                weekdaysContainer.style.display = 'none';
+            }
+
             modal.style.display = 'block';
         });
     });
@@ -104,9 +189,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const formData = new FormData(form);
         const data = Object.fromEntries(formData.entries());
         data.id = parseInt(data.id);
+        data.channel_id = parseInt(data.channel_id);
         data.hour = parseInt(data.hour);
         data.minute = parseInt(data.minute);
-        data.repeat_enabled = data.repeat_enabled === 'on';
+        data.notification_type = parseInt(data.notification_type);
+        data.next_notification = new Date(data.next_notification).toISOString();
+
+        if (data.repeat_minutes === 'fixed') {
+            data.weekdays = Array.from(form.querySelectorAll('input[name="weekdays"]:checked')).map(cb => parseInt(cb.value));
+        }
 
         const response = await fetch('/update_event', {
             method: 'POST',
@@ -120,7 +211,16 @@ document.addEventListener('DOMContentLoaded', () => {
             closeModal();
             location.reload();
         } else {
-            alert('Failed to save event.');
+            const error = await response.json();
+            alert('Failed to save event: ' + (error.error || 'Unknown error'));
+        }
+    });
+
+    document.getElementById('repeat_minutes').addEventListener('input', (e) => {
+        if (e.target.value === 'fixed') {
+            weekdaysContainer.style.display = 'block';
+        } else {
+            weekdaysContainer.style.display = 'none';
         }
     });
 });

@@ -155,14 +155,14 @@ tbody tr:hover {
 .card-grid {
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
+    gap: 1rem; /* Reduced gap */
     margin-top: 2rem;
 }
 
 .member-card {
     background-color: var(--surface-color);
     border-radius: 8px;
-    padding: 1rem 1.5rem;
+    padding: 0.8rem 1.2rem; /* Reduced padding */
     border: 1px solid var(--border-color);
     transition: transform 0.2s ease, box-shadow 0.2s ease;
     width: 100%; /* Full width */
@@ -182,6 +182,27 @@ tbody tr:hover {
 
 .member-card p {
     margin-bottom: 0.5rem;
+    line-height: 1.2; /* Reduced line height */
+}
+
+.sort-headers {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 1rem;
+    background-color: var(--surface-color);
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    border: 1px solid var(--border-color);
+}
+
+.sort-header {
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.sort-header:hover {
+    text-decoration: underline;
 }
 
 /* Calendar Styles */
@@ -352,4 +373,52 @@ tbody tr:hover {
 .modal-buttons button[type="button"] {
     background-color: var(--border-color);
     color: var(--text-color);
+}
+
+/* Logs Page Styles */
+.logs-container {
+    display: flex;
+    gap: 2rem;
+}
+
+.log-section {
+    flex: 1;
+}
+
+.log-section h2 {
+    color: var(--primary-color);
+    border-bottom: 2px solid var(--primary-color);
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+/* Light Mode Theme */
+body.light-mode {
+    --background-color: #f5f5f5;
+    --surface-color: #ffffff;
+    --text-color: #333333;
+    --header-color: #000000;
+    --border-color: #dddddd;
+    --hover-color: #eeeeee;
+}
+
+.theme-toggle {
+    margin-top: auto;
+    text-align: center;
+}
+
+#theme-toggle-button {
+    width: 100%;
+    padding: 0.8rem;
+    border: none;
+    border-radius: 4px;
+    background-color: var(--primary-color);
+    color: var(--header-color);
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.2s ease;
+}
+
+#theme-toggle-button:hover {
+    opacity: 0.9;
 }

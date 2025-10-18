@@ -17,10 +17,24 @@
             <li><a href="/logs" {% if request.url.path == '/logs' %}class="active"{% endif %}>Logs</a></li>
             <li><a href="/logout">Logout</a></li>
         </ul>
+        <div class="theme-toggle">
+            <button id="theme-toggle-button">Toggle Theme</button>
+        </div>
     </div>
     <div class="content">
         {% block content %}{% endblock %}
     </div>
+    <script>
+        document.getElementById('theme-toggle-button').addEventListener('click', () => {
+            document.body.classList.toggle('light-mode');
+            const isLightMode = document.body.classList.contains('light-mode');
+            localStorage.setItem('theme', isLightMode ? 'light' : 'dark');
+        });
+
+        if (localStorage.getItem('theme') === 'light') {
+            document.body.classList.add('light-mode');
+        }
+    </script>
     {% block scripts %}{% endblock %}
 </body>
 </html>

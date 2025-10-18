@@ -80,6 +80,12 @@ class BearNotificationEmbed(SQLModel, table=True):
 
     notification: "BearNotification" = Relationship(back_populates="embeds")
 
+class NotificationDays(SQLModel, table=True):
+    __tablename__ = "notification_days"
+    notification_id: int = Field(foreign_key="bear_notifications.id", primary_key=True)
+    weekday: str
+
+    notification: "BearNotification" = Relationship(back_populates="notification_days")
 class BearNotification(SQLModel, table=True):
     __tablename__ = "bear_notifications"
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -92,7 +98,7 @@ class BearNotification(SQLModel, table=True):
     notification_type: int
     mention_type: str
     repeat_enabled: int
-    repeat_minutes: int
+    repeat_minutes: str
     is_enabled: int
     created_at: Optional[datetime] = None
     created_by: int
@@ -100,9 +106,11 @@ class BearNotification(SQLModel, table=True):
     next_notification: Optional[datetime] = None
 
     embeds: List["BearNotificationEmbed"] = Relationship(back_populates="notification")
+    notification_days: Optional["NotificationDays"] = Relationship(back_populates="notification", sa_relationship_kwargs={'cascade': 'all, delete-orphan', 'uselist': False})
 
 BearNotification.update_forward_refs()
 BearNotificationEmbed.update_forward_refs()
+NotificationDays.update_forward_refs()
 User.update_forward_refs()
 UserGiftCode.update_forward_refs()
 GiftCode.update_forward_refs()

@@ -4,9 +4,16 @@
 
 {% block content %}
 <h1>Alliance Members</h1>
-<div class="card-grid">
+<div class="sort-headers">
+    <span class="sort-header" data-sort-by="nickname">Nickname</span>
+    <span class="sort-header" data-sort-by="fid">FID</span>
+    <span class="sort-header" data-sort-by="furnace_lv">Furnace Level</span>
+    <span class="sort-header" data-sort-by="kid">KID</span>
+    <span class="sort-header" data-sort-by="alliance">Alliance</span>
+</div>
+<div class="card-grid" id="members-grid">
     {% for user in users %}
-    <div class="member-card">
+    <div class="member-card" data-nickname="{{ user.nickname }}" data-fid="{{ user.fid }}" data-furnace_lv="{{ user.furnace_lv }}" data-kid="{{ user.kid }}" data-alliance="{{ user.alliance }}">
         <h3>{{ user.nickname }}</h3>
         <p><strong>FID:</strong> {{ user.fid }}</p>
         <p><strong>Furnace Level:</strong> {{ user.furnace_lv }}</p>
@@ -15,4 +22,59 @@
     </div>
     {% endfor %}
 </div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const headers = document.querySelectorAll('.sort-header');
+    const grid = document.getElementById('members-grid');
+    const originalOrder = Array.from(grid.children);
+
+    headers.forEach(header => {
+        header.addEventListener('click', () => {
+            const sortBy = header.dataset.sortBy;
+            let sortOrder = header.dataset.sortOrder || 'asc';
+
+            if (sortOrder === 'asc') {
+                header.dataset.sortOrder = 'desc';
+            } else if (sortOrder === 'desc') {
+                header.dataset.sortOrder = 'original';
+            } else {
+                header.dataset.sortOrder = 'asc';
+            }
+
+            sortCards(sortBy, header.dataset.sortOrder);
+        });
+    });
+
+    function sortCards(sortBy, order) {
+        const cards = Array.from(grid.children);
+
+        if (order === 'original') {
+            originalOrder.forEach(card => grid.appendChild(card));
+            return;
+        }
+
+        cards.sort((a, b) => {
+            let valA = a.dataset[sortBy];
+            let valB = b.dataset[sortBy];
+
+            if (!isNaN(valA) && !isNaN(valB)) {
+                valA = Number(valA);
+                valB = Number(valB);
+            }
+
+            if (valA < valB) {
+                return order === 'asc' ? -1 : 1;
+            }
+            if (valA > valB) {
+                return order === 'asc' ? 1 : -1;
+            }
+            return 0;
+        });
+
+        cards.forEach(card => grid.appendChild(card));
+    }
+});
+</script>
 {% endblock %}

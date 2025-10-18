@@ -5,22 +5,22 @@ from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy.orm import selectinload, Session
 from sqlmodel import create_engine, Session, select, SQLModel
-from .models import User, UserGiftCode, NicknameChange, FurnaceChange, AttendanceRecord, GiftCode, BearNotification, BearNotificationEmbed
+from .models import User, UserGiftCode, NicknameChange, FurnaceChange, AttendanceRecord, GiftCode, BearNotification, BearNotificationEmbed, NotificationDays
 import os
 from datetime import datetime, date, timedelta
 from collections import defaultdict
 import calendar
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
+
+# --- Configuration ---
+SECRET_KEY = os.environ.get("SECRET_KEY", "your-secret-key")
+WEB_DASHBOARD_PASSWORD = os.environ.get("WEB_DASHBOARD_PASSWORD", "password")
 
 app = FastAPI()
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="web/static"), name="static")
-
-# --- Configuration ---
-SECRET_KEY = os.environ.get("SECRET_KEY", "your-secret-key")
-WEB_DASHBOARD_PASSWORD = os.environ.get("WEB_DASHBOARD_PASSWORD", "password")
 
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
@@ -111,29 +111,11 @@ def dec_to_hex(decimal_color):
 
 # This is an API Model (also called a DTO), not a table model.
 # It's used to structure data specifically for the frontend.
-class BearNotificationWithEmbed(SQLModel):
-    # Fields from BearNotification
-    id: int
-    guild_id: int
-    channel_id: int
-    hour: int
-    minute: int
-    timezone: str
-    description: str
-    notification_type: int
-    mention_type: str
-    repeat_enabled: int
-    repeat_minutes: int
-    is_enabled: int
-    created_at: Optional[datetime] = None
-    last_notification: Optional[datetime] = None
-    next_notification: Optional[datetime] = None
-
-    # Extra fields for the frontend
+class BearNotificationWithNickname(BearNotification):
     created_by_nickname: Optional[str] = None
-    embed_title: Optional[str] = None
-    embed_color: Optional[str] = None
-    embed_thumbnail_url: Optional[str] = None
+
+    class Config:
+        arbitrary_types_allowed = True
 
 @app.get("/events", response_class=HTMLResponse)
 async def read_events(request: Request, authenticated: bool = Depends(is_authenticated), beartime_session: Session = Depends(get_beartime_session), users_session: Session = Depends(get_users_session)):
@@ -147,35 +129,42 @@ async def read_events(request: Request, authenticated: bool = Depends(is_authent
     users = users_session.exec(select(User)).all()
     user_map = {user.fid: user.nickname for user in users}
 
-    # Eagerly load the 'embeds' relationship to avoid extra queries
-    statement = select(BearNotification).options(selectinload(BearNotification.embeds))
+    statement = select(BearNotification).options(selectinload(BearNotification.embeds), selectinload(BearNotification.notification_days))
     events_query = beartime_session.exec(statement).all()
+
     events_map = defaultdict(list)
     for event in events_query:
         nickname = user_map.get(event.created_by, "Unknown")
 
-        if not event.embeds:
-            continue
-        embed = event.embeds[0]
-        event_with_embed = BearNotificationWithEmbed(
-            **event.model_dump(),
-            created_by_nickname=nickname,
-            embed_title=embed.title,
-            embed_color=dec_to_hex(embed.color),
-            embed_thumbnail_url=embed.thumbnail_url,
-        )
+        event_with_nickname = BearNotificationWithNickname.model_validate(event)
+        event_with_nickname.created_by_nickname = nickname
 
-        if event_with_embed.next_notification and event_with_embed.next_notification.date() >= today:
-            events_map[event_with_embed.next_notification.date()].append(event_with_embed)
+        # Add a placeholder for embed_title for events that might not have one
+        event_with_nickname.embed_title = event.embeds[0].title if event.embeds else "No Title"
 
-        if event_with_embed.repeat_enabled and event_with_embed.next_notification:
-            next_occurrence = event_with_embed.next_notification + timedelta(minutes=event_with_embed.repeat_minutes)
-            while next_occurrence.month == today.month:
-                if next_occurrence.date() >= today:
-                    clone = BearNotificationWithEmbed(**event_with_embed.model_dump())
-                    clone.next_notification = next_occurrence
-                    events_map[next_occurrence.date()].append(clone)
-                next_occurrence += timedelta(minutes=event_with_embed.repeat_minutes)
+        if event_with_nickname.next_notification and event_with_nickname.next_notification.date() >= today:
+            events_map[event_with_nickname.next_notification.date()].append(event_with_nickname)
+
+        if event_with_nickname.repeat_enabled and event_with_nickname.next_notification:
+            if event_with_nickname.repeat_minutes.isdigit():
+                repeat_minutes = int(event_with_nickname.repeat_minutes)
+                if repeat_minutes > 0:
+                    next_occurrence = event_with_nickname.next_notification + timedelta(minutes=repeat_minutes)
+                    while next_occurrence.month == today.month:
+                        if next_occurrence.date() >= today:
+                            clone = BearNotificationWithNickname.model_validate(event_with_nickname)
+                            clone.next_notification = next_occurrence
+                            events_map[next_occurrence.date()].append(clone)
+                        next_occurrence += timedelta(minutes=repeat_minutes)
+            elif event_with_nickname.repeat_minutes == "fixed" and event.notification_days:
+                weekdays = list(map(int, event.notification_days.weekday.split('|')))
+                current_date = event_with_nickname.next_notification.date()
+                while current_date.month <= today.month:
+                    if current_date.weekday() in weekdays and current_date >= today:
+                        clone = BearNotificationWithNickname.model_validate(event_with_nickname)
+                        clone.next_notification = datetime.combine(current_date, event_with_nickname.next_notification.time())
+                        events_map[current_date].append(clone)
+                    current_date += timedelta(days=1)
 
     return templates.TemplateResponse("events.html", {
         "request": request,
@@ -216,10 +205,25 @@ async def read_giftcodes(request: Request, authenticated: bool = Depends(is_auth
 
 class EventUpdate(BaseModel):
     id: int
+    description: str
+    channel_id: int
     hour: int
     minute: int
-    repeat_enabled: bool
+    repeat_minutes: str
+    mention_type: str
+    notification_type: int
+    next_notification: datetime
+    weekdays: Optional[List[int]] = None
+
+    # Embed fields
     embed_title: str
+    embed_description: str
+    embed_color: str
+    embed_footer: str
+    embed_author: str
+    embed_image_url: str
+    embed_thumbnail_url: str
+    embed_mention_message: str
 
 @app.post("/update_event", response_class=JSONResponse)
 async def update_event(
@@ -235,15 +239,42 @@ async def update_event(
     if not notification:
         return JSONResponse(content={"success": False, "error": "Event not found"}, status_code=404)
 
+    # Update notification fields
+    notification.description = data.description
+    notification.channel_id = data.channel_id
     notification.hour = data.hour
     notification.minute = data.minute
-    notification.repeat_enabled = data.repeat_enabled
+    notification.repeat_minutes = data.repeat_minutes
+    notification.mention_type = data.mention_type
+    notification.notification_type = data.notification_type
+    notification.next_notification = data.next_notification
 
+    # Update embed fields
     if notification.embeds:
-        notification.embeds[0].title = data.embed_title
+        embed = notification.embeds[0]
+        embed.title = data.embed_title
+        embed.description = data.embed_description
+        embed.color = int(data.embed_color.lstrip('#'), 16) if data.embed_color else None
+        embed.footer = data.embed_footer
+        embed.author = data.embed_author
+        embed.image_url = data.embed_image_url
+        embed.thumbnail_url = data.embed_thumbnail_url
+        embed.mention_message = data.embed_mention_message
+
+    # Handle weekdays for fixed repeat
+    if data.repeat_minutes == "fixed":
+        if notification.notification_days:
+            beartime_session.delete(notification.notification_days)
+
+        if data.weekdays:
+            sorted_days = sorted(data.weekdays)
+            weekday_str = "|".join(map(str, sorted_days))
+            new_notification_days = NotificationDays(notification_id=notification.id, weekday=weekday_str)
+            beartime_session.add(new_notification_days)
 
     beartime_session.add(notification)
     beartime_session.commit()
+    beartime_session.refresh(notification)
 
     return JSONResponse(content={"success": True})
 
@@ -259,12 +290,16 @@ async def read_logs(request: Request, authenticated: bool = Depends(is_authentic
     nickname_changes = changes_session.exec(select(NicknameChange)).all()
     furnace_changes = changes_session.exec(select(FurnaceChange)).all()
 
-    logs = nickname_changes + furnace_changes
-
     # Sort logs by date
     try:
-        logs.sort(key=lambda x: datetime.fromisoformat(x.change_date), reverse=True)
+        nickname_changes.sort(key=lambda x: datetime.fromisoformat(x.change_date), reverse=True)
+        furnace_changes.sort(key=lambda x: datetime.fromisoformat(x.change_date), reverse=True)
     except (ValueError, TypeError): # Handle cases where change_date might not be a valid ISO format string
         pass # Or add more robust error handling/logging
 
-    return templates.TemplateResponse("logs.html", {"request": request, "logs": logs, "user_map": user_map})
+    return templates.TemplateResponse("logs.html", {
+        "request": request,
+        "nickname_changes": nickname_changes,
+        "furnace_changes": furnace_changes,
+        "user_map": user_map
+    })
