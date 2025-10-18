@@ -1,5 +1,6 @@
 from typing import Optional, List
 from sqlmodel import Field, SQLModel, Relationship
+from pydantic import ConfigDict
 from datetime import datetime, time
 
 class GiftCode(SQLModel, table=True):
@@ -77,6 +78,8 @@ class BearNotificationEmbed(SQLModel, table=True):
     mention_message: Optional[str] = None
     created_at: Optional[datetime] = None
 
+    notification: "BearNotification" = Relationship(back_populates="embeds")
+
 class BearNotification(SQLModel, table=True):
     __tablename__ = "bear_notifications"
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -96,5 +99,10 @@ class BearNotification(SQLModel, table=True):
     last_notification: Optional[datetime] = None
     next_notification: Optional[datetime] = None
 
-class BearNotificationWithNickname(BearNotification):
-    created_by_nickname: Optional[str] = None
+    embeds: List["BearNotificationEmbed"] = Relationship(back_populates="notification")
+
+BearNotification.update_forward_refs()
+BearNotificationEmbed.update_forward_refs()
+User.update_forward_refs()
+UserGiftCode.update_forward_refs()
+GiftCode.update_forward_refs()

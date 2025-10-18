@@ -3,8 +3,9 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
-from sqlmodel import create_engine, Session, select
-from .models import User, UserGiftCode, NicknameChange, FurnaceChange, AttendanceRecord, GiftCode, BearNotification, BearNotificationWithNickname, BearNotificationEmbed
+from sqlalchemy.orm import selectinload, Session
+from sqlmodel import create_engine, Session, select, SQLModel
+from .models import User, UserGiftCode, NicknameChange, FurnaceChange, AttendanceRecord, GiftCode, BearNotification, BearNotificationEmbed
 import os
 from datetime import datetime, date, timedelta
 from collections import defaultdict
@@ -108,7 +109,28 @@ def dec_to_hex(decimal_color):
         return None
     return f"#{decimal_color:06x}"
 
-class BearNotificationWithEmbed(BearNotificationWithNickname):
+# This is an API Model (also called a DTO), not a table model.
+# It's used to structure data specifically for the frontend.
+class BearNotificationWithEmbed(SQLModel):
+    # Fields from BearNotification
+    id: int
+    guild_id: int
+    channel_id: int
+    hour: int
+    minute: int
+    timezone: str
+    description: str
+    notification_type: int
+    mention_type: str
+    repeat_enabled: int
+    repeat_minutes: int
+    is_enabled: int
+    created_at: Optional[datetime] = None
+    last_notification: Optional[datetime] = None
+    next_notification: Optional[datetime] = None
+
+    # Extra fields for the frontend
+    created_by_nickname: Optional[str] = None
     embed_title: Optional[str] = None
     embed_color: Optional[str] = None
     embed_thumbnail_url: Optional[str] = None
@@ -125,7 +147,9 @@ async def read_events(request: Request, authenticated: bool = Depends(is_authent
     users = users_session.exec(select(User)).all()
     user_map = {user.fid: user.nickname for user in users}
 
-    events_query = beartime_session.exec(select(BearNotification).join(BearNotificationEmbed)).all()
+    # Eagerly load the 'embeds' relationship to avoid extra queries
+    statement = select(BearNotification).options(selectinload(BearNotification.embeds))
+    events_query = beartime_session.exec(statement).all()
     events_map = defaultdict(list)
     for event in events_query:
         nickname = user_map.get(event.created_by, "Unknown")
