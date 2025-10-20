@@ -436,7 +436,7 @@ tbody tr:hover {
     padding: 0.3rem;
     margin-top: 0.1rem;
     margin-bottom: 0.3rem;
-    border: 1px solid var(--border-color);
+    border: 2px solid var(--border-color);
     border-radius: 4px;
     background-color: var(--surface-color);
     color: var(--text-color);

@@ -4,6 +4,7 @@
 
 {% block styles %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/litepicker/dist/css/litepicker.css"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/mdbassit/Coloris@latest/dist/coloris.min.css"/>
 <link rel="stylesheet" href="/static/dark-mode.css">
 <style>
     .litepicker {
@@ -181,7 +182,7 @@
                 <label for="edit_embed_description">Description:</label>
                 <textarea id="edit_embed_description" name="embed_description" rows="3"></textarea>
                 <label for="edit_embed_color">Color:</label>
-                <input type="text" id="edit_embed_color" name="embed_color">
+                <input type="text" id="edit_embed_color" name="embed_color" data-coloris>
                 <label for="edit_embed_footer">Footer:</label>
                 <input type="text" id="edit_embed_footer" name="embed_footer">
                 <label for="edit_embed_author">Author:</label>
@@ -342,7 +343,7 @@
                 <label for="add_embed_description">Description:</label>
                 <textarea id="add_embed_description" name="embed_description" rows="3"></textarea>
                 <label for="add_embed_color">Color:</label>
-                <input type="text" id="add_embed_color" name="embed_color">
+                <input type="text" id="add_embed_color" name="embed_color" data-coloris>
                 <label for="add_embed_footer">Footer:</label>
                 <input type="text" id="add_embed_footer" name="embed_footer" value="DOA Unified Notification System">
                 <label for="add_embed_author">Author:</label>
@@ -387,8 +388,18 @@
 
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/litepicker/dist/litepicker.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/mdbassit/Coloris@latest/dist/coloris.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+    Coloris({
+        el: '[data-coloris]',
+        parent: '.container',
+        theme: 'default',
+        onChange: (color, input) => {
+            input.style.borderColor = color;
+        }
+    });
+
     const editModal = document.getElementById('edit-event-modal');
     const addModal = document.getElementById('add-event-modal');
     const addEventBtn = document.getElementById('add-event-btn');
@@ -607,7 +618,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const embed = eventData.embeds && eventData.embeds.length > 0 ? eventData.embeds[0] : {};
                 form.querySelector('#edit_embed_title').value = embed.title || '';
                 form.querySelector('#edit_embed_description').value = embed.description || '';
-                form.querySelector('#edit_embed_color').value = embed.color ? `#${embed.color.toString(16).padStart(6, '0')}` : '';
+                const colorInput = form.querySelector('#edit_embed_color');
+                const initialColor = embed.color ? `#${embed.color.toString(16).padStart(6, '0')}` : '';
+                colorInput.value = initialColor;
+                colorInput.style.borderColor = initialColor;
                 form.querySelector('#edit_embed_footer').value = embed.footer || '';
                 form.querySelector('#edit_embed_author').value = embed.author || '';
                 form.querySelector('#edit_embed_image_url').value = embed.image_url || '';
