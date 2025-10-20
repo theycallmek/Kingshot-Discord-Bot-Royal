@@ -33,15 +33,28 @@
         </div>
     </div>
     <script>
-        document.getElementById('theme-toggle-button').addEventListener('click', () => {
-            document.body.classList.toggle('light-mode');
-            const isLightMode = document.body.classList.contains('light-mode');
-            localStorage.setItem('theme', isLightMode ? 'light' : 'dark');
+        const themeToggleButton = document.getElementById('theme-toggle-button');
+        const body = document.body;
+
+        const applyTheme = (theme) => {
+            if (theme === 'light') {
+                body.classList.add('light-mode');
+                body.classList.remove('dark');
+            } else {
+                body.classList.remove('light-mode');
+                body.classList.add('dark');
+            }
+        };
+
+        themeToggleButton.addEventListener('click', () => {
+            const isLightMode = body.classList.contains('light-mode');
+            const newTheme = isLightMode ? 'dark' : 'light';
+            localStorage.setItem('theme', newTheme);
+            applyTheme(newTheme);
         });
 
-        if (localStorage.getItem('theme') === 'light') {
-            document.body.classList.add('light-mode');
-        }
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        applyTheme(savedTheme);
 
         document.getElementById('hamburger-menu').addEventListener('click', () => {
             document.getElementById('sidebar').classList.toggle('active');

@@ -393,10 +393,12 @@
 document.addEventListener('DOMContentLoaded', () => {
     Coloris({
         el: '[data-coloris]',
-        parent: '.container',
-        theme: 'default',
+        parent: 'body',
+        themeMode: 'auto',
         onChange: (color, input) => {
-            input.style.borderColor = color;
+            if (input) {
+                input.style.borderColor = color;
+            }
         }
     });
 
