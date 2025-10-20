@@ -10,8 +10,8 @@ import os
 from datetime import datetime, date, timedelta, time
 from collections import defaultdict
 import calendar
-from pydantic import BaseModel
-from typing import Optional, List
+from pydantic import BaseModel, field_validator
+from typing import Optional, List, Any
 import pytz
 import re
 
@@ -127,7 +127,7 @@ class BearNotificationEmbedPydantic(BaseModel):
 class BearNotificationWithNickname(BaseModel):
     id: Optional[int] = None
     description: Optional[str] = None
-    channel_id: Optional[int] = None
+    channel_id: Optional[str] = None
     hour: Optional[int] = None
     minute: Optional[int] = None
     repeat_minutes: Optional[str] = None
@@ -142,6 +142,13 @@ class BearNotificationWithNickname(BaseModel):
     created_by_nickname: Optional[str] = None
     embed_title: Optional[str] = None
 
+    @field_validator('channel_id', mode='before')
+    @classmethod
+    def validate_channel_id(cls, v: Any) -> Optional[str]:
+        if v is None:
+            return None
+        return str(v)
+
     class Config:
         arbitrary_types_allowed = True
         from_attributes = True
@@ -154,7 +161,7 @@ async def read_events(request: Request, authenticated: bool = Depends(is_authent
     today = date.today()
     cal = calendar.Calendar()
     month_days = cal.monthdatescalendar(today.year, today.month)
-    
+
     calendar_start_date = month_days[0][0]
     calendar_end_date = month_days[-1][-1]
 
@@ -170,7 +177,6 @@ async def read_events(request: Request, authenticated: bool = Depends(is_authent
         if not event.next_notification:
             continue
 
-        # Ensure repeat_minutes is a string before validation
         if isinstance(event.repeat_minutes, int):
             event.repeat_minutes = str(event.repeat_minutes)
 
@@ -191,7 +197,7 @@ async def read_events(request: Request, authenticated: bool = Depends(is_authent
                     occurrence += timedelta(minutes=repeat_minutes * periods_to_jump)
                 while occurrence.date() < calendar_start_date:
                     occurrence += timedelta(minutes=repeat_minutes)
-            
+
             elif event.repeat_minutes == "fixed" and event.notification_days:
                  weekdays = set(map(int, event.notification_days.weekday.split('|')))
                  day_iter = calendar_start_date
@@ -264,11 +270,11 @@ async def read_giftcodes(request: Request, authenticated: bool = Depends(is_auth
 class EventUpdate(BaseModel):
     id: int
     description: Optional[str] = None
-    channel_id: int
+    channel_id: str
     hour: int
     minute: int
     repeat_minutes: str
-    mention_type: str
+    mention_type: Optional[str] = None
     notification_type: int
     is_enabled: bool = True
     next_notification: datetime
@@ -286,7 +292,7 @@ class EventUpdate(BaseModel):
 
 class EventCreate(BaseModel):
     description: Optional[str] = None
-    channel_id: int
+    channel_id: str
     hour: int
     minute: int
     timezone: str
@@ -321,7 +327,7 @@ async def create_event(
         full_description = ""
         if data.notification_type == 6 and data.custom_times:
             full_description = f"CUSTOM_TIMES:{data.custom_times}|"
-        
+
         if data.message_type == 'embed':
             full_description += "EMBED_MESSAGE:true"
         elif data.message_type == 'plain':
@@ -334,7 +340,7 @@ async def create_event(
 
         new_notification = BearNotification(
             guild_id=1,
-            channel_id=data.channel_id,
+            channel_id=int(data.channel_id),
             hour=data.hour,
             minute=data.minute,
             timezone=data.timezone,
@@ -345,7 +351,7 @@ async def create_event(
             repeat_minutes=data.repeat_minutes,
             is_enabled=1 if data.is_enabled else 0,
             created_by=0,
-            next_notification=aware_dt.isoformat()
+            next_notification=aware_dt # Pass datetime object directly
         )
         beartime_session.add(new_notification)
         beartime_session.flush()
@@ -391,22 +397,21 @@ async def update_event(
     if not notification:
         return JSONResponse(content={"success": False, "error": "Event not found"}, status_code=404)
 
-    message_part = ""
-    if data.message_type == 'embed':
-        message_part = "EMBED_MESSAGE:true"
-    elif data.message_type == 'plain':
-        message_part = f"PLAIN_MESSAGE:{data.description}"
-
+    full_description = ""
     if data.notification_type == 6 and data.custom_times:
-        notification.description = f"CUSTOM_TIMES:{data.custom_times}|{message_part}"
-    else:
-        notification.description = re.sub(r"CUSTOM_TIMES:[^|]+\|", "", message_part)
+        full_description = f"CUSTOM_TIMES:{data.custom_times}|"
 
-    notification.channel_id = data.channel_id
+    if data.message_type == 'embed':
+        full_description += "EMBED_MESSAGE:true"
+    elif data.message_type == 'plain':
+        full_description += f"PLAIN_MESSAGE:{data.description}"
+    notification.description = full_description
+
+    notification.channel_id = int(data.channel_id)
     notification.hour = data.hour
     notification.minute = data.minute
     notification.repeat_minutes = data.repeat_minutes
-    notification.mention_type = data.mention_type
+    notification.mention_type = data.mention_type or "none"
     notification.notification_type = data.notification_type
     notification.repeat_enabled = 1 if data.repeat_minutes and data.repeat_minutes != "0" else 0
     notification.is_enabled = 1 if data.is_enabled else 0
@@ -415,15 +420,15 @@ async def update_event(
         aware_dt = pytz.utc.localize(data.next_notification)
     else:
         aware_dt = data.next_notification
-    notification.next_notification = aware_dt.isoformat()
+    notification.next_notification = aware_dt
 
     if data.message_type == 'embed':
-        if notification.embeds:
-            embed = notification.embeds[0]
-        else:
+        if not notification.embeds:
             embed = BearNotificationEmbed(notification_id=notification.id)
             beartime_session.add(embed)
-        
+        else:
+            embed = notification.embeds[0]
+
         embed.title = data.embed_title
         embed.description = data.embed_description
         embed.color = int(data.embed_color.lstrip('#'), 16) if data.embed_color else None
@@ -434,11 +439,11 @@ async def update_event(
         embed.mention_message = data.embed_mention_message if data.embed_mention_message else None
 
     if data.repeat_minutes == "fixed":
-        if notification.notification_days:
-            notification.notification_days.weekday = "|".join(map(str, sorted(data.weekdays)))
-        elif data.weekdays:
+        if not notification.notification_days:
             new_notification_days = NotificationDays(notification_id=notification.id, weekday="|".join(map(str, sorted(data.weekdays))))
             beartime_session.add(new_notification_days)
+        elif data.weekdays:
+            notification.notification_days.weekday = "|".join(map(str, sorted(data.weekdays)))
     elif notification.notification_days:
         beartime_session.delete(notification.notification_days)
 

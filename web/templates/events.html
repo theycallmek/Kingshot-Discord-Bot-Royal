@@ -2,6 +2,16 @@
 
 {% block title %}Events Calendar - DOA Dashboard{% endblock %}
 
+{% block styles %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/litepicker/dist/css/litepicker.css"/>
+<link rel="stylesheet" href="/static/dark-mode.css">
+<style>
+    .litepicker {
+        z-index: 99999 !important;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div style="display: flex; justify-content: space-between; align-items: center;">
     <h1>Events Calendar</h1>
@@ -24,22 +34,23 @@
         {% for week in month_days %}
             {% for day in week %}
                 <div class="day {% if day.month != today.month %}other-month{% endif %} {% if day == today %}today{% endif %}">
-                    <div class="day-number">{{ day.day }}</div>
+                    <div class="day-number">
+                        {{ day.day }}
+                    </div>
                     <div class="events">
                         {% if day in events_map %}
                             {% for event in events_map[day] %}
                                 {% set background_style = '' %}
                                 {% if event.embeds and event.embeds[0].thumbnail_url %}
-                                    {% set background_style = "background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url(" ~ (event.embeds[0].thumbnail_url | replace('"', '\"')) ~ ");" %}
+                                    {% set background_style = "background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url(" ~ (event.embeds[0].thumbnail_url | replace('"', '"')) ~ ");" %}
                                 {% endif %}
                                 <div class="event {% if not event.is_enabled %}disabled{% endif %}" style="{{ background_style }} border-left-color: {{ event.embeds[0].color if event.embeds else 'var(--primary-color)' }};"
-                                     data-event='{{ event.model_dump_json() | tojson }}'>
-                                    <div class="event-time">{{ event.hour }}:{{ "%02d"|format(event.minute) }}</div>
-                                    <div class="event-desc">{{ (event.embed_title[:-12] if event.embed_title.endswith('Notification') else event.embed_title)|trim }}</div>
-                                    <div class="event-details">
-                                        <strong>Enabled:</strong> {% if event.is_enabled %}✅{% else %}❌{% endif %}<br>
-                                        <strong>Repeats:</strong> {% if event.repeat_enabled %}Yes{% else %}No{% endif %}<br>
+                                     data-event='{{ event.model_dump_json() | safe }}'>
+                                    <div class="event-header">
+                                        <div class="event-time">{{ event.hour }}:{{ "%02d"|format(event.minute) }}</div>
+                                        <div class="repeat-symbol {% if event.repeat_enabled %}repeat-green{% else %}repeat-red{% endif %}">↻</div>
                                     </div>
+                                    <div class="event-desc">{{ (event.embed_title[:-12] if event.embed_title.endswith('Notification') else event.embed_title)|trim }}</div>
                                 </div>
                             {% endfor %}
                         {% endif %}
@@ -68,7 +79,8 @@
                 </div>
                 <div class="form-group">
                     <label for="edit_channel_id">Channel:</label>
-                    <select id="edit_channel_id" name="channel_id">
+                    <select id="edit_channel_id" name="channel_id" required>
+                        <option value="">-- Select Channel --</option>
                         <option value="1420123829484916867">🏆｜events</option>
                         <option value="1420123824879308973">🐻｜bear</option>
                         <option value="1420123828541198499">⚔️｜arena</option>
@@ -82,10 +94,23 @@
             </div>
 
             <div class="form-row">
-                <div class="form-group">
-                    <label for="edit_next_notification">Next Notification (UTC):</label>
-                    <input type="datetime-local" id="edit_next_notification" name="next_notification">
+                <div style="display: flex; width: 100%; gap: 10px; align-items: flex-end;">
+                    <div style="flex-basis: 50%;">
+                        <label for="edit_next_notification_date">Next Notification Date (UTC):</label>
+                        <input type="text" id="edit_next_notification_date" name="next_notification_date" placeholder="Select Date..." style="width: 100%;">
+                    </div>
+                    <div style="flex-basis: 25%;">
+                        <label for="edit_hour">Hour:</label>
+                        <select id="edit_hour" name="hour" style="width: 100%;"></select>
+                    </div>
+                    <div style="flex-basis: 25%;">
+                        <label for="edit_minute">Minute:</label>
+                        <select id="edit_minute" name="minute" style="width: 100%;"></select>
+                    </div>
                 </div>
+            </div>
+
+            <div class="form-row">
                 <div class="form-group">
                     <label for="edit_repeat_minutes">Repeat Interval:</label>
                     <select id="edit_repeat_minutes" name="repeat_minutes">
@@ -163,8 +188,29 @@
                 <input type="text" id="edit_embed_author" name="embed_author">
                 <label for="edit_embed_image_url">Image URL:</label>
                 <input type="text" id="edit_embed_image_url" name="embed_image_url">
-                <label for="edit_embed_thumbnail_url">Thumbnail URL:</label>
-                <input type="text" id="edit_embed_thumbnail_url" name="embed_thumbnail_url">
+                <div class="thumbnail-container" style="display: flex; justify-content: space-between; align-items: center; gap: 15px;">
+                    <div class="thumbnail-selection" style="flex-grow: 1;">
+                        <label for="edit_embed_thumbnail_url_select">Thumbnail:</label>
+                        <select id="edit_embed_thumbnail_url_select" name="embed_thumbnail_url_select" class="thumbnail-select">
+                            <option value="">None</option>
+                            <option value="/static/images/thumbnails/bear-hunt-icon.webp">Bear Hunt</option>
+                            <option value="/static/images/thumbnails/sanctuary-battle-icon.webp">Sanctuary Battle</option>
+                            <option value="/static/images/thumbnails/viking-vengeance-icon.webp">Viking Vengeance</option>
+                            <option value="/static/images/thumbnails/cesares-fury-event-icon.webp">Cesare's Fury</option>
+                            <option value="/static/images/thumbnails/swordland-showdown-icon.webp">Swordland Showdown</option>
+                            <option value="/static/images/thumbnails/alliance-championship-icon.webp">Alliance Championship</option>
+                            <option value="/static/images/thumbnails/alliance-mobilization-icon.webp">Alliance Mobilization</option>
+                            <option value="custom">Custom URL</option>
+                        </select>
+                        <div class="custom-thumbnail-container" style="display: none; margin-top: 10px;">
+                            <label for="edit_embed_thumbnail_url">Custom Thumbnail URL:</label>
+                            <input type="text" id="edit_embed_thumbnail_url" name="embed_thumbnail_url" class="custom-thumbnail-input">
+                        </div>
+                    </div>
+                    <div class="thumbnail-preview-container">
+                        <img id="edit-thumbnail-preview" class="thumbnail-preview" src="" alt="Thumbnail Preview" style="max-width: 75px; height: auto;">
+                    </div>
+                </div>
                 <label for="edit_embed_mention_message">Mention Message:</label>
                 <input type="text" id="edit_embed_mention_message" name="embed_mention_message">
             </div>
@@ -209,10 +255,23 @@
             </div>
 
             <div class="form-row">
-                <div class="form-group">
-                    <label for="add_next_notification">Next Notification (UTC):</label>
-                    <input type="datetime-local" id="add_next_notification" name="next_notification" required>
+                <div style="display: flex; width: 100%; gap: 10px; align-items: flex-end;">
+                    <div style="flex-basis: 50%;">
+                        <label for="add_next_notification_date">Next Notification Date (UTC):</label>
+                        <input type="text" id="add_next_notification_date" name="next_notification_date" required placeholder="Select Date..." style="width: 100%;">
+                    </div>
+                    <div style="flex-basis: 25%;">
+                        <label for="add_hour">Hour:</label>
+                        <select id="add_hour" name="hour" style="width: 100%;"></select>
+                    </div>
+                    <div style="flex-basis: 25%;">
+                        <label for="add_minute">Minute:</label>
+                        <select id="add_minute" name="minute" style="width: 100%;"></select>
+                    </div>
                 </div>
+            </div>
+
+            <div class="form-row">
                 <div class="form-group">
                     <label for="add_repeat_minutes">Repeat Interval:</label>
                     <select id="add_repeat_minutes" name="repeat_minutes">
@@ -290,8 +349,29 @@
                 <input type="text" id="add_embed_author" name="embed_author">
                 <label for="add_embed_image_url">Image URL:</label>
                 <input type="text" id="add_embed_image_url" name="embed_image_url">
-                <label for="add_embed_thumbnail_url">Thumbnail URL:</label>
-                <input type="text" id="add_embed_thumbnail_url" name="embed_thumbnail_url">
+                <div class="thumbnail-container" style="display: flex; justify-content: space-between; align-items: center; gap: 15px;">
+                    <div class="thumbnail-selection" style="flex-grow: 1;">
+                        <label for="add_embed_thumbnail_url_select">Thumbnail:</label>
+                        <select id="add_embed_thumbnail_url_select" name="embed_thumbnail_url_select" class="thumbnail-select">
+                            <option value="">None</option>
+                            <option value="/static/images/thumbnails/bear-hunt-icon.webp">Bear Hunt</option>
+                            <option value="/static/images/thumbnails/sanctuary-battle-icon.webp">Sanctuary Battle</option>
+                            <option value="/static/images/thumbnails/viking-vengeance-icon.webp">Viking Vengeance</option>
+                            <option value="/static/images/thumbnails/cesares-fury-event-icon.webp">Cesare's Fury</option>
+                            <option value="/static/images/thumbnails/swordland-showdown-icon.webp">Swordland Showdown</option>
+                            <option value="/static/images/thumbnails/alliance-championship-icon.webp">Alliance Championship</option>
+                            <option value="/static/images/thumbnails/alliance-mobilization-icon.webp">Alliance Mobilization</option>
+                            <option value="custom">Custom URL</option>
+                        </select>
+                        <div class="custom-thumbnail-container" style="display: none; margin-top: 10px;">
+                            <label for="add_embed_thumbnail_url">Custom Thumbnail URL:</label>
+                            <input type="text" id="add_embed_thumbnail_url" name="embed_thumbnail_url" class="custom-thumbnail-input">
+                        </div>
+                    </div>
+                    <div class="thumbnail-preview-container">
+                        <img id="add-thumbnail-preview" class="thumbnail-preview" src="" alt="Thumbnail Preview" style="max-width: 75px; height: auto;">
+                    </div>
+                </div>
                 <label for="add_embed_mention_message">Mention Message:</label>
                 <input type="text" id="add_embed_mention_message" name="embed_mention_message">
             </div>
@@ -306,6 +386,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/litepicker/dist/litepicker.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     const editModal = document.getElementById('edit-event-modal');
@@ -315,15 +396,97 @@ document.addEventListener('DOMContentLoaded', () => {
     const setupModal = (modal) => {
         const closeButton = modal.querySelector('.close-button');
         const cancelButton = modal.querySelector('.cancel-button');
-        const messageTypeSelect = modal.querySelector('select[name="message_type"]');
-        const plainFields = modal.querySelector('[id$="-plain-message-fields"]');
-        const embedFields = modal.querySelector('[id$="-embed-fields"]');
-        const repeatMinutesSelect = modal.querySelector('select[name="repeat_minutes"]');
-        const weekdaysContainer = modal.querySelector('[id$="-weekdays-container"]');
-        const notificationTypeSelect = modal.querySelector('select[name="notification_type"]');
-        const customTimesContainer = modal.querySelector('[id$="-custom-times-container"]');
+        const selects = modal.querySelectorAll('select');
+        const thumbnailSelect = modal.querySelector('.thumbnail-select');
+        const customThumbnailInput = modal.querySelector('.custom-thumbnail-input');
+        const thumbnailPreview = modal.querySelector('.thumbnail-preview');
+        const dateInput = modal.querySelector('input[name="next_notification_date"]');
+        const hourPicker = modal.querySelector('[name="hour"]');
+        const minutePicker = modal.querySelector('[name="minute"]');
 
-        const closeModal = () => modal.style.display = 'none';
+        modal.picker = null; // To hold the litepicker instance
+
+        // Populate hour picker
+        for (let i = 0; i < 24; i++) {
+            const hour = i.toString().padStart(2, '0');
+            hourPicker.add(new Option(hour, hour));
+        }
+
+        // Populate minute picker
+        for (let i = 0; i < 60; i++) {
+            const minute = i.toString().padStart(2, '0');
+            minutePicker.add(new Option(minute, minute));
+        }
+
+        const initLitepicker = (defaultDate) => {
+            setTimeout(() => {
+                if (modal.style.display !== 'block') return;
+                modal.picker = new Litepicker({
+                    element: dateInput,
+                    parentEl: document.body,
+                    format: 'YYYY-MM-DD',
+                    autoApply: true,
+                    singleMode: true,
+                    showTooltip: false,
+                });
+
+                modal.picker.on('show', () => {
+                    if (!document.body.classList.contains('light-mode')) {
+                        const pickerEl = document.querySelector('.litepicker');
+                        if (pickerEl) {
+                            const darkTheme = {
+                                '--litepicker-container-months-color-bg': '#1e1e1e',
+                                '--litepicker-container-months-box-shadow-color': '#000',
+                                '--litepicker-footer-color-bg': '#1e1e1e',
+                                '--litepicker-footer-box-shadow-color': '#000',
+                                '--litepicker-tooltip-color-bg': '#1e1e1e',
+                                '--litepicker-month-header-color': '#e0e0e0',
+                                '--litepicker-button-prev-month-color': '#e0e0e0',
+                                '--litepicker-button-next-month-color': '#e0e0e0',
+                                '--litepicker-button-prev-month-color-hover': '#00a8ff',
+                                '--litepicker-button-next-month-color-hover': '#00a8ff',
+                                '--litepicker-month-weekday-color': '#e0e0e0',
+                                '--litepicker-month-week-number-color': '#e0e0e0',
+                                '--litepicker-day-color': '#e0e0e0',
+                                '--litepicker-day-color-hover': '#fff',
+                                '--litepicker-is-today-color': '#fff',
+                                '--litepicker-is-in-range-color': '#2a2a2a',
+                                '--litepicker-is-locked-color': '#4a4a4a',
+                                '--litepicker-is-start-color': '#fff',
+                                '--litepicker-is-start-color-bg': '#00a8ff',
+                                '--litepicker-is-end-color': '#fff',
+                                '--litepicker-is-end-color-bg': '#00a8ff',
+                                '--litepicker-button-cancel-color': '#e0e0e0',
+                                '--litepicker-button-cancel-color-bg': '#2c2c2c',
+                                '--litepicker-button-apply-color': '#fff',
+                                '--litepicker-button-apply-color-bg': '#00a8ff',
+                                '--litepicker-button-reset-color': '#e0e0e0',
+                                '--litepicker-button-reset-color-hover': '#00a8ff',
+                                '--litepicker-highlighted-day-color': '#1e1e1e',
+                                '--litepicker-highlighted-day-color-bg': '#00a8ff',
+                            };
+                            for (const [key, value] of Object.entries(darkTheme)) {
+                                pickerEl.style.setProperty(key, value);
+                            }
+                        }
+                    }
+                });
+
+                if (defaultDate) {
+                    modal.picker.setDate(defaultDate);
+                }
+            }, 0);
+        };
+
+        modal.initLitepicker = initLitepicker;
+
+        const closeModal = () => {
+            modal.style.display = 'none';
+            if (modal.picker) {
+                modal.picker.destroy();
+                modal.picker = null;
+            }
+        };
 
         closeButton.addEventListener('click', closeModal);
         cancelButton.addEventListener('click', closeModal);
@@ -331,101 +494,155 @@ document.addEventListener('DOMContentLoaded', () => {
             if (event.target == modal) closeModal();
         });
 
-        const toggleMessageTypeFields = () => {
-            if (messageTypeSelect.value === 'embed') {
-                plainFields.style.display = 'none';
-                embedFields.style.display = 'block';
-            } else {
-                plainFields.style.display = 'block';
-                embedFields.style.display = 'none';
+        const updateThumbnailPreview = () => {
+            if (!thumbnailSelect) return;
+            const selectedValue = thumbnailSelect.value;
+            const customValue = customThumbnailInput ? customThumbnailInput.value.trim() : '';
+            let previewUrl = '';
+
+            if (selectedValue === 'custom') {
+                previewUrl = customValue;
+            } else if (selectedValue) {
+                previewUrl = selectedValue;
+            }
+
+            if (previewUrl && thumbnailPreview) {
+                thumbnailPreview.src = previewUrl;
+                thumbnailPreview.style.display = 'block';
+            } else if (thumbnailPreview) {
+                thumbnailPreview.style.display = 'none';
             }
         };
 
-        const toggleWeekdays = () => {
-            weekdaysContainer.style.display = repeatMinutesSelect.value === 'fixed' ? 'block' : 'none';
+        const toggleFields = () => {
+            const messageTypeSelect = modal.querySelector('select[name="message_type"]');
+            if (messageTypeSelect) {
+                const plainFields = modal.querySelector('[id$="-plain-message-fields"]');
+                const embedFields = modal.querySelector('[id$="-embed-fields"]');
+                const isEmbed = messageTypeSelect.value === 'embed';
+                plainFields.style.display = isEmbed ? 'none' : 'block';
+                embedFields.style.display = isEmbed ? 'block' : 'none';
+            }
+
+            const repeatMinutesSelect = modal.querySelector('select[name="repeat_minutes"]');
+            if (repeatMinutesSelect) {
+                const weekdaysContainer = modal.querySelector('[id$="-weekdays-container"]');
+                if (weekdaysContainer) weekdaysContainer.style.display = repeatMinutesSelect.value === 'fixed' ? 'block' : 'none';
+            }
+
+            const notificationTypeSelect = modal.querySelector('select[name="notification_type"]');
+            if (notificationTypeSelect) {
+                const customTimesContainer = modal.querySelector('[id$="-custom-times-container"]');
+                if(customTimesContainer) customTimesContainer.style.display = notificationTypeSelect.value === '6' ? 'block' : 'none';
+            }
+
+            if (thumbnailSelect) {
+                const customThumbnailContainer = modal.querySelector('.custom-thumbnail-container');
+                if (customThumbnailContainer) customThumbnailContainer.style.display = thumbnailSelect.value === 'custom' ? 'block' : 'none';
+                updateThumbnailPreview();
+            }
         };
 
-        const toggleCustomTimes = () => {
-            customTimesContainer.style.display = notificationTypeSelect.value === '6' ? 'block' : 'none';
-        };
+        selects.forEach(select => select.addEventListener('change', toggleFields));
+        if (customThumbnailInput) {
+            customThumbnailInput.addEventListener('input', updateThumbnailPreview);
+        }
 
-        messageTypeSelect.addEventListener('change', toggleMessageTypeFields);
-        repeatMinutesSelect.addEventListener('change', toggleWeekdays);
-        notificationTypeSelect.addEventListener('change', toggleCustomTimes);
-
-        // Initial state
-        toggleMessageTypeFields();
-        toggleWeekdays();
-        toggleCustomTimes();
+        modal.toggleFields = toggleFields;
     };
 
     setupModal(editModal);
     setupModal(addModal);
 
     addEventBtn.addEventListener('click', () => {
+        const form = document.getElementById('add-event-form');
+        form.reset();
         addModal.style.display = 'block';
-        const messageTypeSelect = addModal.querySelector('#add_message_type');
-        messageTypeSelect.dispatchEvent(new Event('change'));
+        addModal.toggleFields();
+        const now = new Date();
+        form.querySelector('[name="hour"]').value = now.getUTCHours().toString().padStart(2, '0');
+        form.querySelector('[name="minute"]').value = now.getUTCMinutes().toString().padStart(2, '0');
+        addModal.initLitepicker(now);
     });
 
     document.querySelectorAll('.event').forEach(eventEl => {
         eventEl.addEventListener('click', () => {
-            const eventData = JSON.parse(eventEl.dataset.event);
-            const form = document.getElementById('edit-event-form');
+            try {
+                const rawEventData = eventEl.dataset.event;
+                const eventData = JSON.parse(rawEventData);
+                const form = document.getElementById('edit-event-form');
 
-            // Populate main fields
-            form.id.value = eventData.id;
-            form.channel_id.value = eventData.channel_id;
-            form.repeat_minutes.value = eventData.repeat_minutes;
-            form.mention_type.value = eventData.mention_type;
-            form.notification_type.value = eventData.notification_type;
-            form.next_notification.value = eventData.next_notification ? eventData.next_notification.slice(0, 16) : '';
-            form.is_enabled.checked = eventData.is_enabled === 1;
+                // Populate main fields
+                form.querySelector('#edit-event-id').value = eventData.id;
+                form.querySelector('#edit_channel_id').value = eventData.channel_id;
+                form.querySelector('#edit_repeat_minutes').value = eventData.repeat_minutes;
+                form.querySelector('#edit_mention_type').value = eventData.mention_type;
+                form.querySelector('#edit_notification_type').value = eventData.notification_type;
+                form.querySelector('#edit_is_enabled').checked = eventData.is_enabled === 1;
 
-            // Handle message type and description
-            const messageTypeSelect = form.querySelector('#edit_message_type');
-            const customTimesInput = form.querySelector('#edit_custom_times');
-            let descriptionText = eventData.description;
+                const nextNotification = new Date(eventData.next_notification);
+                form.querySelector('[name="hour"]').value = nextNotification.getUTCHours().toString().padStart(2, '0');
+                form.querySelector('[name="minute"]').value = nextNotification.getUTCMinutes().toString().padStart(2, '0');
 
-            if (descriptionText.startsWith('CUSTOM_TIMES:')) {
-                const parts = descriptionText.split('|');
-                customTimesInput.value = parts[0].replace('CUSTOM_TIMES:', '');
-                descriptionText = parts.length > 1 ? parts[1] : '';
+                // Handle description and message type
+                const messageTypeSelect = form.querySelector('#edit_message_type');
+                let descriptionText = eventData.description || '';
+                if (descriptionText.startsWith('CUSTOM_TIMES:')) {
+                    const parts = descriptionText.split('|');
+                    form.querySelector('#edit_custom_times').value = parts[0].replace('CUSTOM_TIMES:', '');
+                    descriptionText = parts.length > 1 ? parts[1] : '';
+                } else {
+                    form.querySelector('#edit_custom_times').value = '';
+                }
+
+                if (descriptionText.startsWith('PLAIN_MESSAGE:')) {
+                    messageTypeSelect.value = 'plain';
+                    form.querySelector('#edit_description').value = descriptionText.replace('PLAIN_MESSAGE:', '');
+                } else {
+                    messageTypeSelect.value = 'embed';
+                    form.querySelector('#edit_description').value = '';
+                }
+
+                // Populate embed fields
+                const embed = eventData.embeds && eventData.embeds.length > 0 ? eventData.embeds[0] : {};
+                form.querySelector('#edit_embed_title').value = embed.title || '';
+                form.querySelector('#edit_embed_description').value = embed.description || '';
+                form.querySelector('#edit_embed_color').value = embed.color ? `#${embed.color.toString(16).padStart(6, '0')}` : '';
+                form.querySelector('#edit_embed_footer').value = embed.footer || '';
+                form.querySelector('#edit_embed_author').value = embed.author || '';
+                form.querySelector('#edit_embed_image_url').value = embed.image_url || '';
+                form.querySelector('#edit_embed_mention_message').value = embed.mention_message || '';
+
+                // Handle thumbnail
+                const thumbnailSelect = form.querySelector('#edit_embed_thumbnail_url_select');
+                const customThumbnailInput = form.querySelector('#edit_embed_thumbnail_url');
+                const thumbnailUrl = embed.thumbnail_url || '';
+                const isPreset = Array.from(thumbnailSelect.options).some(opt => opt.value === thumbnailUrl);
+
+                if (isPreset) {
+                    thumbnailSelect.value = thumbnailUrl;
+                    if(customThumbnailInput) customThumbnailInput.value = '';
+                } else if (thumbnailUrl) {
+                    thumbnailSelect.value = 'custom';
+                    if(customThumbnailInput) customThumbnailInput.value = thumbnailUrl;
+                } else {
+                    thumbnailSelect.value = '';
+                    if(customThumbnailInput) customThumbnailInput.value = '';
+                }
+
+                // Handle weekdays
+                const weekdays = eventData.notification_days ? eventData.notification_days.weekday.split('|').map(Number) : [];
+                form.querySelectorAll('input[name="weekdays"]').forEach(checkbox => {
+                    checkbox.checked = weekdays.includes(parseInt(checkbox.value));
+                });
+                
+                editModal.style.display = 'block';
+                editModal.toggleFields();
+                editModal.initLitepicker(nextNotification);
+
+            } catch (e) {
+                console.error("Error parsing event data or displaying modal:", e);
             }
-            else {
-                customTimesInput.value = '';
-            }
-
-            if (descriptionText.startsWith('PLAIN_MESSAGE:')) {
-                messageTypeSelect.value = 'plain';
-                form.description.value = descriptionText.replace('PLAIN_MESSAGE:', '');
-            }
-            else if (descriptionText.startsWith('EMBED_MESSAGE:')) {
-                messageTypeSelect.value = 'embed';
-                form.description.value = ''; // Plain description is not used for embeds
-            }
-            messageTypeSelect.dispatchEvent(new Event('change'));
-            form.querySelector('#edit_notification_type').dispatchEvent(new Event('change'));
-
-            // Populate embed fields
-            const embed = eventData.embeds && eventData.embeds.length > 0 ? eventData.embeds[0] : {};
-            form.embed_title.value = embed.title || '';
-            form.embed_description.value = embed.description || '';
-            form.embed_color.value = embed.color ? `#${embed.color.toString(16).padStart(6, '0')}` : '';
-            form.embed_footer.value = embed.footer || '';
-            form.embed_author.value = embed.author || '';
-            form.embed_image_url.value = embed.image_url || '';
-            form.embed_thumbnail_url.value = embed.thumbnail_url || '';
-            form.embed_mention_message.value = embed.mention_message || '';
-
-            // Handle weekdays
-            const weekdays = eventData.notification_days ? eventData.notification_days.weekday.split('|').map(Number) : [];
-            form.querySelectorAll('input[name="weekdays"]').forEach(checkbox => {
-                checkbox.checked = weekdays.includes(parseInt(checkbox.value));
-            });
-            form.querySelector('select[name="repeat_minutes"]').dispatchEvent(new Event('change'));
-
-            editModal.style.display = 'block';
         });
     });
 
@@ -433,41 +650,57 @@ document.addEventListener('DOMContentLoaded', () => {
         const formData = new FormData(form);
         const data = Object.fromEntries(formData.entries());
 
-        const nextNotificationValue = data.next_notification;
-        if (nextNotificationValue) {
-            const date = new Date(nextNotificationValue);
-            data.hour = date.getHours();
-            data.minute = date.getMinutes();
+        // Handle thumbnail URL
+        const thumbnailSelect = form.querySelector('.thumbnail-select');
+        if (thumbnailSelect && thumbnailSelect.value !== 'custom') {
+            data.embed_thumbnail_url = thumbnailSelect.value;
+        }
+        delete data.embed_thumbnail_url_select;
+
+        // Validation and type conversion
+        if (!data.channel_id) {
+            alert("Error: Please select a channel for the event.");
+            return;
         }
 
-        // Convert types
+        if (data.next_notification_date && data.hour && data.minute) {
+            const date = new Date(`${data.next_notification_date}T${data.hour}:${data.minute}:00Z`);
+            data.hour = date.getUTCHours();
+            data.minute = date.getUTCMinutes();
+            data.next_notification = date.toISOString();
+        }
+        delete data.next_notification_date;
+
         if (data.id) data.id = parseInt(data.id);
-        data.channel_id = parseInt(data.channel_id);
         data.notification_type = parseInt(data.notification_type);
-        data.next_notification = new Date(data.next_notification).toISOString();
         data.is_enabled = form.querySelector('input[name="is_enabled"]').checked;
 
         if (data.repeat_minutes === 'fixed') {
             data.weekdays = Array.from(form.querySelectorAll('input[name="weekdays"]:checked')).map(cb => parseInt(cb.value));
         }
 
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(data)
-        });
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
 
-        if (response.ok) {
-            const modalId = form.id.replace('-form', '-modal');
-            const modal = document.getElementById(modalId);
-            if(modal) modal.style.display = 'none';
-            location.reload();
-        }
-        else {
-            const error = await response.json();
-            alert(`Failed to save event: ${error.error || 'Unknown error'}`);
+            if (response.ok) {
+                location.reload();
+            } else {
+                const errorText = await response.text();
+                try {
+                    const error = JSON.parse(errorText);
+                    const errorMessage = error.detail ? JSON.stringify(error.detail) : 'Unknown error';
+                    alert(`Failed to save event: ${errorMessage}`);
+                } catch (e) {
+                    alert(`Failed to save event: ${errorText}`);
+                }
+            }
+        } catch (error) {
+            alert(`Failed to save event: An unexpected error occurred.`);
+            console.error('Submit error:', error);
         }
     };
 
