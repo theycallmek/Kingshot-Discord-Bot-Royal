@@ -69,7 +69,7 @@
         <form id="edit-event-form">
             <input type="hidden" id="edit-event-id" name="id">
 
-            <div class="form-row">
+            <div class="form-row form-row-split">
                 <div class="form-group">
                     <label for="edit_message_type">Message Type:</label>
                     <select id="edit_message_type" name="message_type">
@@ -97,7 +97,7 @@
                 <!-- Left half -->
                 <div style="flex: 1; display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end;">
                     <div style="flex-basis: 46%;">
-                        <label for="edit_next_notification_date">Next Notification Date (UTC):</label>
+                        <label for="edit_next_notification_date">Date (UTC):</label>
                         <input type="text" id="edit_next_notification_date" name="next_notification_date" placeholder="Select Date..." style="width: 100%;">
                     </div>
                     <div style="flex-basis: 23%;">
@@ -128,7 +128,7 @@
                 </div>
             </div>
 
-            <div class="form-row">
+            <div class="form-row form-row-split">
                 <div class="form-group">
                     <label for="edit_mention_type">Mention Type:</label>
                     <select id="edit_mention_type" name="mention_type">
@@ -231,7 +231,7 @@
         <form id="add-event-form">
             <input type="hidden" name="timezone" value="UTC">
 
-            <div class="form-row">
+            <div class="form-row form-row-split">
                 <div class="form-group">
                     <label for="add_message_type">Message Type:</label>
                     <select id="add_message_type" name="message_type">
@@ -258,7 +258,7 @@
                 <!-- Left half -->
                 <div style="flex: 1; display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end;">
                     <div style="flex-basis: 46%;">
-                        <label for="add_next_notification_date">Next Notification Date (UTC):</label>
+                        <label for="add_next_notification_date">Date (UTC):</label>
                         <input type="text" id="add_next_notification_date" name="next_notification_date" required placeholder="Select Date..." style="width: 100%;">
                     </div>
                     <div style="flex-basis: 23%;">
@@ -289,7 +289,7 @@
                 </div>
             </div>
 
-            <div class="form-row">
+            <div class="form-row form-row-split">
                 <div class="form-group">
                     <label for="add_mention_type">Mention Type:</label>
                     <select id="add_mention_type" name="mention_type" required>

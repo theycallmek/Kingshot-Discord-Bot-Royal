@@ -395,7 +395,7 @@ tbody tr:hover {
 
 .modal-content h2 {
     font-size: 1.1rem;
-    margin-bottom: 0.8rem;
+    margin-bottom: 0.5rem;
 }
 
 .close-button {
@@ -412,7 +412,7 @@ tbody tr:hover {
 .modal-content .form-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 1rem;
+    gap: 0.5rem;
 }
 
 .modal-content .form-group {
@@ -421,7 +421,7 @@ tbody tr:hover {
 
 .modal-content label {
     display: block;
-    margin-top: 0.5rem;
+    margin-top: 0.3rem;
     font-weight: 600;
     color: var(--header-color);
     font-size: 0.8rem;
@@ -433,9 +433,9 @@ tbody tr:hover {
 .modal-content select,
 .modal-content textarea {
     width: 100%;
-    padding: 0.4rem;
+    padding: 0.3rem;
     margin-top: 0.1rem;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.3rem;
     border: 1px solid var(--border-color);
     border-radius: 4px;
     background-color: var(--surface-color);
@@ -446,7 +446,7 @@ tbody tr:hover {
 }
 
 .modal-content hr {
-    margin: 0.5rem 0;
+    margin: 0.3rem 0;
 }
 
 .modal-content input[type="datetime-local"]::-webkit-calendar-picker-indicator {
@@ -477,7 +477,7 @@ tbody tr:hover {
 }
 
 .modal-buttons {
-    margin-top: 1rem;
+    margin-top: 0.7rem;
     display: flex;
     justify-content: flex-end;
     gap: 1rem;
@@ -770,6 +770,10 @@ body.light-mode .modal-content select {
     .modal-content .form-row {
         grid-template-columns: 1fr;
         gap: 0.5rem;
+    }
+
+    .modal-content .form-row-split {
+        grid-template-columns: 1fr 1fr;
     }
 
     .modal-buttons {
