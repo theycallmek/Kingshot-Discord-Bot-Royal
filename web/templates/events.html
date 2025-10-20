@@ -93,33 +93,38 @@
                 <input type="text" id="edit_description" name="description">
             </div>
 
-            <div class="form-row">
-                <div style="display: flex; width: 100%; gap: 10px; align-items: flex-end;">
-                    <div style="flex-basis: 50%;">
+            <div class="form-row" style="align-items: flex-end;">
+                <!-- Left half -->
+                <div style="flex: 1; display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end;">
+                    <div style="flex-basis: 46%;">
                         <label for="edit_next_notification_date">Next Notification Date (UTC):</label>
                         <input type="text" id="edit_next_notification_date" name="next_notification_date" placeholder="Select Date..." style="width: 100%;">
                     </div>
-                    <div style="flex-basis: 25%;">
+                    <div style="flex-basis: 23%;">
                         <label for="edit_hour">Hour:</label>
                         <select id="edit_hour" name="hour" style="width: 100%;"></select>
                     </div>
-                    <div style="flex-basis: 25%;">
+                    <div style="flex-basis: 23%;">
                         <label for="edit_minute">Minute:</label>
                         <select id="edit_minute" name="minute" style="width: 100%;"></select>
                     </div>
                 </div>
-            </div>
-
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="edit_repeat_minutes">Repeat Interval:</label>
-                    <select id="edit_repeat_minutes" name="repeat_minutes">
-                        <option value="0">No Repeat</option>
-                        <option value="fixed">Specific Days</option>
-                        {% for i in range(1, 15) %}
-                        <option value="{{ i * 1440 }}">{{ i }} Day(s)</option>
-                        {% endfor %}
-                    </select>
+                <!-- Right half -->
+                <div style="flex: 1; display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-end;">
+                    <div style="flex-grow: 1;">
+                        <label for="edit_repeat_minutes">Repeat Interval:</label>
+                        <select id="edit_repeat_minutes" name="repeat_minutes" style="width: 100%;">
+                            <option value="0">No Repeat</option>
+                            <option value="fixed">Specific Days</option>
+                            {% for i in range(1, 15) %}
+                            <option value="{{ i * 1440 }}">{{ i }} Day(s)</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div style="padding-bottom: 8px;">
+                        <label for="edit_is_enabled">Enabled:</label>
+                        <input type="checkbox" id="edit_is_enabled" name="is_enabled" value="true">
+                    </div>
                 </div>
             </div>
 
@@ -166,11 +171,6 @@
                     <input type="checkbox" name="weekdays" value="5"> Sat
                     <input type="checkbox" name="weekdays" value="6"> Sun
                 </div>
-            </div>
-
-            <div class="form-group">
-                <label for="edit_is_enabled">Enabled:</label>
-                <input type="checkbox" id="edit_is_enabled" name="is_enabled" value="true">
             </div>
 
             <div id="edit-embed-fields" style="display: none;">
@@ -254,33 +254,38 @@
                 <input type="text" id="add_description" name="description">
             </div>
 
-            <div class="form-row">
-                <div style="display: flex; width: 100%; gap: 10px; align-items: flex-end;">
-                    <div style="flex-basis: 50%;">
+            <div class="form-row" style="align-items: flex-end;">
+                <!-- Left half -->
+                <div style="flex: 1; display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end;">
+                    <div style="flex-basis: 46%;">
                         <label for="add_next_notification_date">Next Notification Date (UTC):</label>
                         <input type="text" id="add_next_notification_date" name="next_notification_date" required placeholder="Select Date..." style="width: 100%;">
                     </div>
-                    <div style="flex-basis: 25%;">
+                    <div style="flex-basis: 23%;">
                         <label for="add_hour">Hour:</label>
                         <select id="add_hour" name="hour" style="width: 100%;"></select>
                     </div>
-                    <div style="flex-basis: 25%;">
+                    <div style="flex-basis: 23%;">
                         <label for="add_minute">Minute:</label>
                         <select id="add_minute" name="minute" style="width: 100%;"></select>
                     </div>
                 </div>
-            </div>
-
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="add_repeat_minutes">Repeat Interval:</label>
-                    <select id="add_repeat_minutes" name="repeat_minutes">
-                        <option value="0">No Repeat</option>
-                        <option value="fixed">Specific Days</option>
-                        {% for i in range(1, 15) %}
-                        <option value="{{ i * 1440 }}">{{ i }} Day(s)</option>
-                        {% endfor %}
-                    </select>
+                <!-- Right half -->
+                <div style="flex: 1; display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-end;">
+                    <div style="flex-grow: 1;">
+                        <label for="add_repeat_minutes">Repeat Interval:</label>
+                        <select id="add_repeat_minutes" name="repeat_minutes" style="width: 100%;">
+                            <option value="0">No Repeat</option>
+                            <option value="fixed">Specific Days</option>
+                            {% for i in range(1, 15) %}
+                            <option value="{{ i * 1440 }}">{{ i }} Day(s)</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div style="padding-bottom: 8px;">
+                        <label for="add_is_enabled">Enabled:</label>
+                        <input type="checkbox" id="add_is_enabled" name="is_enabled" value="true" checked>
+                    </div>
                 </div>
             </div>
 
@@ -327,11 +332,6 @@
                     <input type="checkbox" name="weekdays" value="5"> Sat
                     <input type="checkbox" name="weekdays" value="6"> Sun
                 </div>
-            </div>
-
-            <div class="form-group">
-                <label for="add_is_enabled">Enabled:</label>
-                <input type="checkbox" id="add_is_enabled" name="is_enabled" value="true" checked>
             </div>
 
             <div id="add-embed-fields" style="display: none;">
