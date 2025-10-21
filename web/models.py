@@ -7,6 +7,7 @@ class GiftCode(SQLModel, table=True):
     __tablename__ = "gift_codes"
     giftcode: str = Field(primary_key=True)
     date: str
+    validation_status: Optional[str] = None
 
     users: List["UserGiftCode"] = Relationship(back_populates="gift")
 
@@ -107,6 +108,12 @@ class BearNotification(SQLModel, table=True):
 
     embeds: List["BearNotificationEmbed"] = Relationship(back_populates="notification")
     notification_days: Optional["NotificationDays"] = Relationship(back_populates="notification", sa_relationship_kwargs={'cascade': 'all, delete-orphan', 'uselist': False})
+
+class Alliance(SQLModel, table=True):
+    __tablename__ = "alliance_list"
+    alliance_id: int = Field(primary_key=True)
+    name: str
+    discord_server_id: int
 
 BearNotification.update_forward_refs()
 BearNotificationEmbed.update_forward_refs()

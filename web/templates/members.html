@@ -13,7 +13,7 @@
 </div>
 <div class="card-grid" id="members-grid">
     {% for user in users %}
-    <div class="member-card" data-nickname="{{ user.nickname }}" data-fid="{{ user.fid }}" data-furnace_lv="{{ user.furnace_lv }}" data-kid="{{ user.kid }}" data-alliance="{{ user.alliance }}">
+    <div class="member-card" data-nickname="{{ user.nickname }}" data-fid="{{ user.fid }}" data-furnace_lv="{{ user.furnace_lv }}" data-kid="{{ user.kid }}" data-alliance="{{ alliance_nicknames.get(user.alliance, user.alliance) }}">
         <h3>{{ user.nickname }}</h3>
         <div class="card-details">
             <p><strong>FID:</strong> {{ user.fid }}</p>
@@ -21,7 +21,7 @@
         </div>
         <div class="card-details">
             <p><strong>KID:</strong> {{ user.kid }}</p>
-            <p><strong>Alliance:</strong> {{ user.alliance }}</p>
+            <p><strong>Alliance:</strong> {{ alliance_nicknames.get(user.alliance, user.alliance) }}</p>
         </div>
     </div>
     {% endfor %}

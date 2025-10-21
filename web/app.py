@@ -5,7 +5,7 @@ from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy.orm import selectinload, Session
 from sqlmodel import create_engine, Session, select, SQLModel
-from .models import User, UserGiftCode, NicknameChange, FurnaceChange, AttendanceRecord, GiftCode, BearNotification, BearNotificationEmbed, NotificationDays
+from .models import User, UserGiftCode, NicknameChange, FurnaceChange, AttendanceRecord, GiftCode, BearNotification, BearNotificationEmbed, NotificationDays, Alliance
 import os
 from datetime import datetime, date, timedelta, time
 from collections import defaultdict
@@ -14,6 +14,9 @@ from pydantic import BaseModel, field_validator
 from typing import Optional, List, Any
 import pytz
 import re
+import plotly.graph_objects as go
+import plotly.utils
+import json
 
 # --- Configuration ---
 SECRET_KEY = os.environ.get("SECRET_KEY", "your-secret-key")
@@ -36,6 +39,7 @@ giftcode_engine = create_engine(f"sqlite:///{os.path.join(DB_DIR, 'giftcode.sqli
 changes_engine = create_engine(f"sqlite:///{os.path.join(DB_DIR, 'changes.sqlite')}", connect_args={"check_same_thread": False})
 attendance_engine = create_engine(f"sqlite:///{os.path.join(DB_DIR, 'attendance.sqlite')}", connect_args={"check_same_thread": False})
 beartime_engine = create_engine(f"sqlite:///{os.path.join(DB_DIR, 'beartime.sqlite')}", connect_args={"check_same_thread": False})
+alliance_engine = create_engine(f"sqlite:///{os.path.join(DB_DIR, 'alliance.sqlite')}", connect_args={"check_same_thread": False})
 
 
 # Enable WAL mode
@@ -48,6 +52,8 @@ with changes_engine.connect() as connection:
 with attendance_engine.connect() as connection:
     connection.exec_driver_sql("PRAGMA journal_mode=WAL;")
 with beartime_engine.connect() as connection:
+    connection.exec_driver_sql("PRAGMA journal_mode=WAL;")
+with alliance_engine.connect() as connection:
     connection.exec_driver_sql("PRAGMA journal_mode=WAL;")
 
 def get_users_session():
@@ -69,6 +75,16 @@ def get_attendance_session():
 def get_beartime_session():
     with Session(beartime_engine) as session:
         yield session
+
+def get_alliance_session():
+    with Session(alliance_engine) as session:
+        yield session
+
+# --- Helper Functions ---
+def get_alliance_nicknames(alliance_session: Session) -> dict:
+    """Get a mapping of alliance IDs to nicknames from the database."""
+    alliances = alliance_session.exec(select(Alliance)).all()
+    return {str(alliance.alliance_id): alliance.name for alliance in alliances}
 
 # --- Authentication ---
 def is_authenticated(request: Request):
@@ -93,18 +109,226 @@ async def logout(request: Request):
     return RedirectResponse(url="/login", status_code=303)
 
 @app.get("/", response_class=HTMLResponse)
-async def read_root(request: Request, authenticated: bool = Depends(is_authenticated)):
+async def read_root(request: Request, authenticated: bool = Depends(is_authenticated),
+                   users_session: Session = Depends(get_users_session),
+                   changes_session: Session = Depends(get_changes_session),
+                   alliance_session: Session = Depends(get_alliance_session)):
     if not authenticated:
         return RedirectResponse(url="/login", status_code=303)
-    return templates.TemplateResponse("dashboard.html", {"request": request})
+    
+    # Get all users with their current furnace levels and alliances
+    users = users_session.exec(select(User)).all()
+    
+    # Get all furnace changes
+    furnace_changes = changes_session.exec(select(FurnaceChange)).all()
+    
+    # Create a map of users by fid for quick lookup
+    user_map = {user.fid: user for user in users}
+    
+    # Process data for the graph
+    # We need to track each user's furnace level over time to calculate alliance totals
+    
+    # Dictionary to store user's furnace level history: {fid: {date: level}}
+    user_level_history = defaultdict(dict)
+    
+    # First, populate with all changes
+    for change in furnace_changes:
+        if change.fid in user_map:
+            try:
+                change_date = datetime.fromisoformat(change.change_date).date()
+                user_level_history[change.fid][change_date] = change.new_furnace_lv
+            except (ValueError, TypeError):
+                continue
+    
+    # Add current levels for today
+    today = date.today()
+    for user in users:
+        if user.furnace_lv:
+            user_level_history[user.fid][today] = user.furnace_lv
+    
+    # Get all unique dates and sort them
+    all_dates = set()
+    for fid, date_levels in user_level_history.items():
+        all_dates.update(date_levels.keys())
+    sorted_dates = sorted(all_dates)
+    
+    # For each date, reconstruct each user's level and calculate alliance totals
+    # Dictionary to store: {date: {alliance: total_level}}
+    daily_alliance_totals = defaultdict(lambda: defaultdict(int))
+    
+    for current_date in sorted_dates:
+        # Dictionary to track each user's level on this date: {fid: level}
+        user_levels_on_date = {}
+        
+        # For each user, find their level on this date
+        for fid, date_levels in user_level_history.items():
+            # Find the most recent level at or before current_date
+            level_on_date = None
+            for check_date in sorted(date_levels.keys()):
+                if check_date <= current_date:
+                    level_on_date = date_levels[check_date]
+                else:
+                    break
+            
+            if level_on_date is not None:
+                user_levels_on_date[fid] = level_on_date
+        
+        # Now calculate alliance totals for this date
+        for fid, level in user_levels_on_date.items():
+            if fid in user_map:
+                user = user_map[fid]
+                if user.alliance:
+                    daily_alliance_totals[current_date][user.alliance] += level
+    
+    # Calculate totals and prepare data for Plotly
+
+    # Get alliance nicknames from database
+    alliance_nicknames = get_alliance_nicknames(alliance_session)
+
+    # Filter to only include alliances 1, 2, 3
+    target_alliances = ['1', '2', '3']
+
+    # Prepare traces for each alliance (TOTAL graph)
+    traces_total = []
+    colors = {'1': '#FF6B6B', '2': '#4ECDC4', '3': '#45B7D1'}
+    alliance_names = {aid: alliance_nicknames.get(aid, f'Alliance {aid}') for aid in target_alliances}
+
+    for alliance in target_alliances:
+        dates = []
+        totals = []
+
+        for date_key in sorted_dates:
+            if alliance in daily_alliance_totals[date_key]:
+                total_level = daily_alliance_totals[date_key][alliance]
+                dates.append(date_key.strftime('%Y-%m-%d'))
+                totals.append(total_level)
+
+        if dates:  # Only add trace if we have data
+            traces_total.append(go.Scatter(
+                x=dates,
+                y=totals,
+                mode='lines+markers',
+                name=alliance_names[alliance],
+                line=dict(color=colors[alliance], width=3),
+                marker=dict(size=8)
+            ))
+
+    # Create the total figure
+    fig_total = go.Figure(data=traces_total)
+
+    # Update layout for dark theme
+    fig_total.update_layout(
+        title='Total Alliance Town Center Levels Over Time',
+        xaxis_title='Date',
+        yaxis_title='Total Town Center Level',
+        hovermode='x unified',
+        template='plotly_dark',
+        plot_bgcolor='#1e1e1e',
+        paper_bgcolor='#1e1e1e',
+        font=dict(color='#e0e0e0'),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+        )
+    )
+
+    # Convert to JSON for embedding in template
+    graph_json = json.dumps(fig_total, cls=plotly.utils.PlotlyJSONEncoder)
+
+    # --- NEW: Calculate average town level per alliance by day ---
+    # Dictionary to store: {date: {alliance: {total: int, count: int}}}
+    daily_alliance_stats = defaultdict(lambda: defaultdict(lambda: {'total': 0, 'count': 0}))
+
+    for current_date in sorted_dates:
+        # For each user, find their level on this date
+        for fid, date_levels in user_level_history.items():
+            # Find the most recent level at or before current_date
+            level_on_date = None
+            for check_date in sorted(date_levels.keys()):
+                if check_date <= current_date:
+                    level_on_date = date_levels[check_date]
+                else:
+                    break
+
+            if level_on_date is not None and fid in user_map:
+                user = user_map[fid]
+                if user.alliance:
+                    daily_alliance_stats[current_date][user.alliance]['total'] += level_on_date
+                    daily_alliance_stats[current_date][user.alliance]['count'] += 1
+
+    # Prepare traces for average graph
+    traces_avg = []
+
+    for alliance in target_alliances:
+        dates = []
+        averages = []
+
+        for date_key in sorted_dates:
+            if alliance in daily_alliance_stats[date_key]:
+                stats = daily_alliance_stats[date_key][alliance]
+                if stats['count'] > 0:
+                    avg_level = stats['total'] / stats['count']
+                    dates.append(date_key.strftime('%Y-%m-%d'))
+                    averages.append(round(avg_level, 2))
+
+        if dates:  # Only add trace if we have data
+            traces_avg.append(go.Scatter(
+                x=dates,
+                y=averages,
+                mode='lines+markers',
+                name=alliance_names[alliance],
+                line=dict(color=colors[alliance], width=3),
+                marker=dict(size=8)
+            ))
+
+    # Create the average figure
+    fig_avg = go.Figure(data=traces_avg)
+
+    # Update layout for dark theme
+    fig_avg.update_layout(
+        title='Average Alliance Town Center Level Over Time',
+        xaxis_title='Date',
+        yaxis_title='Average Town Center Level',
+        hovermode='x unified',
+        template='plotly_dark',
+        plot_bgcolor='#1e1e1e',
+        paper_bgcolor='#1e1e1e',
+        font=dict(color='#e0e0e0'),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+        )
+    )
+
+    # Convert average graph to JSON
+    graph_avg_json = json.dumps(fig_avg, cls=plotly.utils.PlotlyJSONEncoder)
+    
+    return templates.TemplateResponse("dashboard.html", {
+        "request": request,
+        "graph_json": graph_json,
+        "graph_avg_json": graph_avg_json
+    })
 
 @app.get("/members", response_class=HTMLResponse)
-async def read_members(request: Request, authenticated: bool = Depends(is_authenticated), session: Session = Depends(get_users_session)):
+async def read_members(request: Request, authenticated: bool = Depends(is_authenticated),
+                      session: Session = Depends(get_users_session),
+                      alliance_session: Session = Depends(get_alliance_session)):
     if not authenticated:
         return RedirectResponse(url="/login", status_code=303)
 
     users = session.exec(select(User)).all()
-    return templates.TemplateResponse("members.html", {"request": request, "users": users})
+    alliance_nicknames = get_alliance_nicknames(alliance_session)
+    return templates.TemplateResponse("members.html", {
+        "request": request,
+        "users": users,
+        "alliance_nicknames": alliance_nicknames
+    })
 
 def dec_to_hex(decimal_color):
     if decimal_color is None:
@@ -152,6 +376,27 @@ class BearNotificationWithNickname(BaseModel):
     class Config:
         arbitrary_types_allowed = True
         from_attributes = True
+
+@app.get("/api/thumbnails")
+async def get_thumbnails(authenticated: bool = Depends(is_authenticated)):
+    if not authenticated:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+
+    thumbnails_dir = os.path.join("web", "static", "images", "thumbnails")
+    thumbnails = []
+
+    if os.path.exists(thumbnails_dir):
+        for filename in os.listdir(thumbnails_dir):
+            if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg')):
+                thumbnails.append({
+                    "filename": filename,
+                    "url": f"/static/images/thumbnails/{filename}"
+                })
+
+    # Sort alphabetically
+    thumbnails.sort(key=lambda x: x['filename'].lower())
+
+    return JSONResponse(content={"thumbnails": thumbnails})
 
 @app.get("/events", response_class=HTMLResponse)
 async def read_events(request: Request, authenticated: bool = Depends(is_authenticated), beartime_session: Session = Depends(get_beartime_session), users_session: Session = Depends(get_users_session)):

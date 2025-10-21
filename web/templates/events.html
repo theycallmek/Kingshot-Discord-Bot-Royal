@@ -4,11 +4,15 @@
 
 {% block styles %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/litepicker/dist/css/litepicker.css"/>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/mdbassit/Coloris@latest/dist/coloris.min.css"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vanilla-picker@2/dist/vanilla-picker.min.css"/>
 <link rel="stylesheet" href="/static/dark-mode.css">
 <style>
     .litepicker {
-        z-index: 99999 !important;
+        z-index: 10000 !important;
+    }
+    /* Vanilla Picker styling */
+    .picker_wrapper {
+        z-index: 100000 !important;
     }
 </style>
 {% endblock %}
@@ -43,9 +47,10 @@
                             {% for event in events_map[day] %}
                                 {% set background_style = '' %}
                                 {% if event.embeds and event.embeds[0].thumbnail_url %}
-                                    {% set background_style = "background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url(" ~ (event.embeds[0].thumbnail_url | replace('"', '"')) ~ ");" %}
+                                    {% set url = event.embeds[0].thumbnail_url %}
+                                    {% set background_style = "background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('" ~ url ~ "');" %}
                                 {% endif %}
-                                <div class="event {% if not event.is_enabled %}disabled{% endif %}" style="{{ background_style }} border-left-color: {{ event.embeds[0].color if event.embeds else 'var(--primary-color)' }};"
+                                <div class="event {% if not event.is_enabled %}disabled{% endif %}" style="{{ background_style }} border-left-color: {{ ('#%06x'|format(event.embeds[0].color)) if event.embeds and event.embeds[0].color else 'var(--primary-color)' }};"
                                      data-event='{{ event.model_dump_json() | safe }}'>
                                     <div class="event-header">
                                         <div class="event-time">{{ event.hour }}:{{ "%02d"|format(event.minute) }}</div>
@@ -175,18 +180,32 @@
             </div>
 
             <div id="edit-embed-fields" style="display: none;">
-                <hr>
-                <h3>Embed Details</h3>
+                <hr style="border: none; border-top: 1px solid var(--border-color); margin: 0.5rem 0;">
                 <label for="edit_embed_title">Title:</label>
                 <input type="text" id="edit_embed_title" name="embed_title">
                 <label for="edit_embed_description">Description:</label>
                 <textarea id="edit_embed_description" name="embed_description" rows="3"></textarea>
                 <label for="edit_embed_color">Color:</label>
-                <input type="text" id="edit_embed_color" name="embed_color" data-coloris>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <select id="edit_embed_color_select" style="flex: 1;">
+                        <option value="#F94144">Red (#F94144)</option>
+                        <option value="#F3722C">Orange Red (#F3722C)</option>
+                        <option value="#F8961E">Orange (#F8961E)</option>
+                        <option value="#F9844A">Light Orange (#F9844A)</option>
+                        <option value="#F9C74F">Yellow (#F9C74F)</option>
+                        <option value="#90BE6D">Green (#90BE6D)</option>
+                        <option value="#43AA8B">Teal (#43AA8B)</option>
+                        <option value="#4D908E">Blue Green (#4D908E)</option>
+                        <option value="#577590">Blue Gray (#577590)</option>
+                        <option value="#277DA1">Blue (#277DA1)</option>
+                        <option value="custom">Custom Color...</option>
+                    </select>
+                    <input type="text" id="edit_embed_color" name="embed_color" style="display: none; flex: 1;">
+                    <button type="button" id="edit_embed_color_picker" style="width: 40px; height: 38px; border: 2px solid var(--border-color); border-radius: 4px; cursor: pointer; padding: 0;"></button>
+                </div>
                 <label for="edit_embed_footer">Footer:</label>
                 <input type="text" id="edit_embed_footer" name="embed_footer">
-                <label for="edit_embed_author">Author:</label>
-                <input type="text" id="edit_embed_author" name="embed_author">
+                <input type="hidden" id="edit_embed_author" name="embed_author">
                 <label for="edit_embed_image_url">Image URL:</label>
                 <input type="text" id="edit_embed_image_url" name="embed_image_url">
                 <div class="thumbnail-container" style="display: flex; justify-content: space-between; align-items: center; gap: 15px;">
@@ -194,13 +213,6 @@
                         <label for="edit_embed_thumbnail_url_select">Thumbnail:</label>
                         <select id="edit_embed_thumbnail_url_select" name="embed_thumbnail_url_select" class="thumbnail-select">
                             <option value="">None</option>
-                            <option value="/static/images/thumbnails/bear-hunt-icon.webp">Bear Hunt</option>
-                            <option value="/static/images/thumbnails/sanctuary-battle-icon.webp">Sanctuary Battle</option>
-                            <option value="/static/images/thumbnails/viking-vengeance-icon.webp">Viking Vengeance</option>
-                            <option value="/static/images/thumbnails/cesares-fury-event-icon.webp">Cesare's Fury</option>
-                            <option value="/static/images/thumbnails/swordland-showdown-icon.webp">Swordland Showdown</option>
-                            <option value="/static/images/thumbnails/alliance-championship-icon.webp">Alliance Championship</option>
-                            <option value="/static/images/thumbnails/alliance-mobilization-icon.webp">Alliance Mobilization</option>
                             <option value="custom">Custom URL</option>
                         </select>
                         <div class="custom-thumbnail-container" style="display: none; margin-top: 10px;">
@@ -336,18 +348,32 @@
             </div>
 
             <div id="add-embed-fields" style="display: none;">
-                <hr>
-                <h3>Embed Details</h3>
+                <hr style="border: none; border-top: 1px solid var(--border-color); margin: 0.5rem 0;">
                 <label for="add_embed_title">Title:</label>
                 <input type="text" id="add_embed_title" name="embed_title">
                 <label for="add_embed_description">Description:</label>
                 <textarea id="add_embed_description" name="embed_description" rows="3"></textarea>
                 <label for="add_embed_color">Color:</label>
-                <input type="text" id="add_embed_color" name="embed_color" data-coloris>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <select id="add_embed_color_select" style="flex: 1;">
+                        <option value="#F94144">Red (#F94144)</option>
+                        <option value="#F3722C">Orange Red (#F3722C)</option>
+                        <option value="#F8961E">Orange (#F8961E)</option>
+                        <option value="#F9844A">Light Orange (#F9844A)</option>
+                        <option value="#F9C74F">Yellow (#F9C74F)</option>
+                        <option value="#90BE6D">Green (#90BE6D)</option>
+                        <option value="#43AA8B">Teal (#43AA8B)</option>
+                        <option value="#4D908E">Blue Green (#4D908E)</option>
+                        <option value="#577590">Blue Gray (#577590)</option>
+                        <option value="#277DA1">Blue (#277DA1)</option>
+                        <option value="custom">Custom Color...</option>
+                    </select>
+                    <input type="text" id="add_embed_color" name="embed_color" style="display: none; flex: 1;">
+                    <button type="button" id="add_embed_color_picker" style="width: 40px; height: 38px; border: 2px solid var(--border-color); border-radius: 4px; cursor: pointer; padding: 0;"></button>
+                </div>
                 <label for="add_embed_footer">Footer:</label>
                 <input type="text" id="add_embed_footer" name="embed_footer" value="DOA Unified Notification System">
-                <label for="add_embed_author">Author:</label>
-                <input type="text" id="add_embed_author" name="embed_author">
+                <input type="hidden" id="add_embed_author" name="embed_author">
                 <label for="add_embed_image_url">Image URL:</label>
                 <input type="text" id="add_embed_image_url" name="embed_image_url">
                 <div class="thumbnail-container" style="display: flex; justify-content: space-between; align-items: center; gap: 15px;">
@@ -355,13 +381,6 @@
                         <label for="add_embed_thumbnail_url_select">Thumbnail:</label>
                         <select id="add_embed_thumbnail_url_select" name="embed_thumbnail_url_select" class="thumbnail-select">
                             <option value="">None</option>
-                            <option value="/static/images/thumbnails/bear-hunt-icon.webp">Bear Hunt</option>
-                            <option value="/static/images/thumbnails/sanctuary-battle-icon.webp">Sanctuary Battle</option>
-                            <option value="/static/images/thumbnails/viking-vengeance-icon.webp">Viking Vengeance</option>
-                            <option value="/static/images/thumbnails/cesares-fury-event-icon.webp">Cesare's Fury</option>
-                            <option value="/static/images/thumbnails/swordland-showdown-icon.webp">Swordland Showdown</option>
-                            <option value="/static/images/thumbnails/alliance-championship-icon.webp">Alliance Championship</option>
-                            <option value="/static/images/thumbnails/alliance-mobilization-icon.webp">Alliance Mobilization</option>
                             <option value="custom">Custom URL</option>
                         </select>
                         <div class="custom-thumbnail-container" style="display: none; margin-top: 10px;">
@@ -388,19 +407,195 @@
 
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/litepicker/dist/litepicker.js"></script>
-<script src="https://cdn.jsdelivr.net/gh/mdbassit/Coloris@latest/dist/coloris.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vanilla-picker@2/dist/vanilla-picker.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    Coloris({
-        el: '[data-coloris]',
-        parent: 'body',
-        themeMode: 'auto',
-        onChange: (color, input) => {
-            if (input) {
-                input.style.borderColor = color;
+    /* ===== VANILLA PICKER CONFIGURATION (WORKING) =====
+     * Library: vanilla-picker v2
+     * CDN CSS: https://cdn.jsdelivr.net/npm/vanilla-picker@2/dist/vanilla-picker.min.css
+     * CDN JS: https://cdn.jsdelivr.net/npm/vanilla-picker@2/dist/vanilla-picker.min.js
+     * HTML: <button type="button" id="xxx_color_picker"></button>
+     * CSS: .picker_wrapper { z-index: 100000 !important; }
+     * ================================================= */
+
+    // Add dark mode CSS for color picker dynamically to match dashboard theme
+    const isDarkMode = !document.body.classList.contains('light-mode');
+    if (isDarkMode) {
+        const style = document.createElement('style');
+        style.textContent = `
+            /* Match dashboard dark theme colors */
+            .picker_wrapper.popup,
+            .picker_wrapper.popup .picker_arrow::before,
+            .picker_wrapper.popup .picker_arrow::after {
+                background: #1e1e1e !important; /* var(--surface-color) */
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5) !important;
             }
+            .picker_wrapper,
+            .picker_wrapper * {
+                border-color: #2c2c2c !important; /* var(--border-color) */
+            }
+            .picker_wrapper {
+                border: 1px solid #2c2c2c !important;
+            }
+            .picker_wrapper .picker_slider,
+            .picker_wrapper .picker_selector {
+                background: #121212 !important; /* var(--background-color) */
+                border: 1px solid #2c2c2c !important; /* var(--border-color) */
+            }
+            .picker_wrapper .picker_sample {
+                border: 1px solid #2c2c2c !important;
+            }
+            /* Target all slider and selector indicators */
+            .picker_selector .picker_sl,
+            .picker_slider .picker_selector {
+                border: 2px solid #2c2c2c !important; /* var(--border-color) */
+            }
+            /* Alpha slider */
+            .picker_alpha {
+                border: 1px solid #2c2c2c !important; /* var(--border-color) */
+            }
+            /* Hue slider */
+            .picker_hue {
+                border: 1px solid #2c2c2c !important; /* var(--border-color) */
+            }
+            /* Color selection area */
+            .picker_sl {
+                border: 1px solid #2c2c2c !important; /* var(--border-color) */
+            }
+            /* Editor area */
+            .picker_editor {
+                border: 1px solid #2c2c2c !important;
+            }
+            .picker_wrapper input,
+            .picker_wrapper input[type="text"] {
+                background: #121212 !important; /* var(--background-color) */
+                border: 1px solid #2c2c2c !important; /* var(--border-color) */
+                color: #e0e0e0 !important; /* var(--text-color) */
+            }
+            .picker_wrapper input:focus {
+                border-color: #00a8ff !important; /* var(--primary-color) */
+                border: 1px solid #00a8ff !important;
+                outline: none !important;
+            }
+            .picker_wrapper button {
+                background: #2a2a2a !important; /* var(--hover-color) */
+                border: 1px solid #2c2c2c !important; /* var(--border-color) */
+                color: #e0e0e0 !important; /* var(--text-color) */
+            }
+            .picker_wrapper button:hover {
+                background: #00a8ff !important; /* var(--primary-color) */
+                color: #ffffff !important; /* var(--header-color) */
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    // Load thumbnails dynamically from API
+    const loadThumbnails = async () => {
+        try {
+            const response = await fetch('/api/thumbnails');
+            const data = await response.json();
+
+            // Get both thumbnail select elements
+            const editSelect = document.getElementById('edit_embed_thumbnail_url_select');
+            const addSelect = document.getElementById('add_embed_thumbnail_url_select');
+
+            // Add thumbnails to both dropdowns
+            data.thumbnails.forEach(thumbnail => {
+                const editOption = document.createElement('option');
+                editOption.value = thumbnail.url;
+                editOption.textContent = thumbnail.filename;
+
+                const addOption = document.createElement('option');
+                addOption.value = thumbnail.url;
+                addOption.textContent = thumbnail.filename;
+
+                // Insert before "Custom URL" option
+                editSelect.insertBefore(editOption, editSelect.querySelector('option[value="custom"]'));
+                addSelect.insertBefore(addOption, addSelect.querySelector('option[value="custom"]'));
+            });
+        } catch (error) {
+            console.error('Failed to load thumbnails:', error);
         }
-    });
+    };
+
+    // Load thumbnails on page load
+    loadThumbnails();
+
+    // Setup Vanilla Picker for color inputs with dropdown
+    const setupColorPicker = (selectId, textInputId, buttonId, defaultColor = '#F94144') => {
+        const select = document.getElementById(selectId);
+        const textInput = document.getElementById(textInputId);
+        const button = document.getElementById(buttonId);
+
+        // Check if dark mode is active
+        const isDarkMode = !document.body.classList.contains('light-mode');
+
+        let picker = null;
+
+        // Handle dropdown change
+        select.addEventListener('change', (e) => {
+            if (e.target.value === 'custom') {
+                // Show text input and enable color picker
+                textInput.style.display = 'flex';
+                button.style.pointerEvents = 'auto';
+                button.style.opacity = '1';
+                if (!picker) {
+                    picker = new Picker({
+                        parent: button,
+                        popup: 'left',
+                        alpha: false,
+                        editor: true,
+                        color: textInput.value || defaultColor,
+                        onChange: function(color) {
+                            const hexColor = color.hex.substring(0, 7);
+                            textInput.value = hexColor;
+                            button.style.backgroundColor = hexColor;
+                        }
+                    });
+                }
+                button.style.backgroundColor = textInput.value || defaultColor;
+            } else {
+                // Hide text input and disable color picker button
+                textInput.style.display = 'none';
+                textInput.value = e.target.value;
+                button.style.backgroundColor = e.target.value;
+                button.style.pointerEvents = 'none';
+                button.style.opacity = '0.7';
+
+                // Close picker if it's open
+                if (picker && picker.settings.parent) {
+                    const pickerPopup = document.querySelector('.picker_wrapper.popup');
+                    if (pickerPopup) {
+                        pickerPopup.classList.remove('open');
+                    }
+                }
+            }
+        });
+
+        // Set initial button color based on current value
+        const initialColor = textInput.value || defaultColor;
+        button.style.backgroundColor = initialColor;
+
+        // Set dropdown to match initial color or custom
+        const matchingOption = Array.from(select.options).find(opt => opt.value === initialColor);
+        if (matchingOption) {
+            select.value = initialColor;
+            // Disable picker button for preset colors
+            button.style.pointerEvents = 'none';
+            button.style.opacity = '0.7';
+        } else {
+            select.value = 'custom';
+            textInput.style.display = 'flex';
+            textInput.value = initialColor;
+            // Enable picker button for custom colors
+            button.style.pointerEvents = 'auto';
+            button.style.opacity = '1';
+        }
+    };
+
+    setupColorPicker('edit_embed_color_select', 'edit_embed_color', 'edit_embed_color_picker');
+    setupColorPicker('add_embed_color_select', 'add_embed_color', 'add_embed_color_picker');
 
     const editModal = document.getElementById('edit-event-modal');
     const addModal = document.getElementById('add-event-modal');
@@ -416,7 +611,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const dateInput = modal.querySelector('input[name="next_notification_date"]');
         const hourPicker = modal.querySelector('[name="hour"]');
         const minutePicker = modal.querySelector('[name="minute"]');
-
         modal.picker = null; // To hold the litepicker instance
 
         // Populate hour picker
@@ -434,6 +628,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const initLitepicker = (defaultDate) => {
             setTimeout(() => {
                 if (modal.style.display !== 'block') return;
+                if (modal.picker) modal.picker.destroy();
                 modal.picker = new Litepicker({
                     element: dateInput,
                     parentEl: document.body,
@@ -490,8 +685,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }, 0);
         };
-
         modal.initLitepicker = initLitepicker;
+
 
         const closeModal = () => {
             modal.style.display = 'none';
@@ -621,9 +816,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 form.querySelector('#edit_embed_title').value = embed.title || '';
                 form.querySelector('#edit_embed_description').value = embed.description || '';
                 const colorInput = form.querySelector('#edit_embed_color');
-                const initialColor = embed.color ? `#${embed.color.toString(16).padStart(6, '0')}` : '';
+                const initialColor = embed.color ? `#${embed.color.toString(16).padStart(6, '0')}` : '#42445a';
                 colorInput.value = initialColor;
-                colorInput.style.borderColor = initialColor;
                 form.querySelector('#edit_embed_footer').value = embed.footer || '';
                 form.querySelector('#edit_embed_author').value = embed.author || '';
                 form.querySelector('#edit_embed_image_url').value = embed.image_url || '';
