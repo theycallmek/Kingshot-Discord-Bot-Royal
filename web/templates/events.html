@@ -199,14 +199,34 @@
 {% endblock %}
 
 {% block content %}
-<div style="display: flex; justify-content: space-between; align-items: center;">
-    <h1>Events Calendar</h1>
-</div>
+<h1>Events Calendar</h1>
 
 <div class="calendar">
-    <div class="calendar-header">
+    <div class="calendar-header" style="display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;">
+        <div class="timezone-controls" style="display: flex; align-items: center; gap: 0.4rem; justify-self: start;">
+            <select id="timezone-select" style="padding: 0.25rem; border-radius: 4px; border: 2px solid var(--border-color); background-color: var(--background-color); color: var(--text-color); font-size: 0.75rem;">
+                <option value="UTC">UTC (Server Time)</option>
+                <option value="America/New_York">Eastern Time (ET)</option>
+                <option value="America/Chicago">Central Time (CT)</option>
+                <option value="America/Denver">Mountain Time (MT)</option>
+                <option value="America/Los_Angeles">Pacific Time (PT)</option>
+                <option value="America/Anchorage">Alaska Time (AKT)</option>
+                <option value="Pacific/Honolulu">Hawaii Time (HT)</option>
+                <option value="Europe/London">London (GMT/BST)</option>
+                <option value="Europe/Paris">Central Europe (CET)</option>
+                <option value="Europe/Athens">Eastern Europe (EET)</option>
+                <option value="Asia/Dubai">Dubai (GST)</option>
+                <option value="Asia/Shanghai">China (CST)</option>
+                <option value="Asia/Tokyo">Japan (JST)</option>
+                <option value="Australia/Sydney">Sydney (AEDT)</option>
+            </select>
+            <select id="time-format-select" style="padding: 0.25rem; border-radius: 4px; border: 2px solid var(--border-color); background-color: var(--background-color); color: var(--text-color); font-size: 0.75rem;">
+                <option value="24">24-Hour</option>
+                <option value="12">12-Hour</option>
+            </select>
+        </div>
         <span class="month-name">{{ today.strftime('%B %Y') }}</span>
-        <button id="add-event-btn" class="add-event-button">Add Event</button>
+        <button id="add-event-btn" class="add-event-button" style="justify-self: end;">Add Event</button>
     </div>
     <div class="calendar-grid">
         <div class="day-name"><span class="full-day-name">Sunday</span><span class="short-day-name">Sun</span></div>
@@ -232,7 +252,10 @@
                                     {% set background_style = "background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('" ~ url ~ "');" %}
                                 {% endif %}
                                 <div class="event {% if not event.is_enabled %}disabled{% endif %}" style="{{ background_style }} border-left-color: {{ ('#%06x'|format(event.embeds[0].color)) if event.embeds and event.embeds[0].color else 'var(--primary-color)' }};"
-                                     data-event='{{ event.model_dump_json() | safe }}'>
+                                     data-event='{{ event.model_dump_json() | safe }}'
+                                     data-utc-hour="{{ event.hour }}"
+                                     data-utc-minute="{{ event.minute }}"
+                                     data-utc-date="{{ event.next_notification.strftime('%Y-%m-%d') if event.next_notification else '' }}">
                                     <div class="event-header">
                                         <div class="event-time">{{ event.hour }}:{{ "%02d"|format(event.minute) }}</div>
                                         <div class="repeat-symbol {% if event.repeat_enabled %}repeat-green{% else %}repeat-red{% endif %}">↻</div>
@@ -282,35 +305,46 @@
 
             <div class="form-row" style="align-items: flex-end;">
                 <!-- Left half -->
-                <div style="flex: 1; display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end;">
-                    <div style="flex-basis: 46%;">
-                        <label for="edit_next_notification_date">Date (UTC):</label>
-                        <input type="text" id="edit_next_notification_date" name="next_notification_date" placeholder="Select Date..." style="width: 100%;">
+                <div style="flex: 1;">
+                    <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end;">
+                        <div style="flex-basis: 46%;">
+                            <label for="edit_next_notification_date">Date (UTC):</label>
+                            <input type="text" id="edit_next_notification_date" name="next_notification_date" placeholder="Select Date..." style="width: 100%;">
+                        </div>
+                        <div style="flex-basis: 23%;">
+                            <label for="edit_hour">Hour:</label>
+                            <select id="edit_hour" name="hour" style="width: 100%;"></select>
+                        </div>
+                        <div style="flex-basis: 23%;">
+                            <label for="edit_minute">Minute:</label>
+                            <select id="edit_minute" name="minute" style="width: 100%;"></select>
+                        </div>
                     </div>
-                    <div style="flex-basis: 23%;">
-                        <label for="edit_hour">Hour:</label>
-                        <select id="edit_hour" name="hour" style="width: 100%;"></select>
-                    </div>
-                    <div style="flex-basis: 23%;">
-                        <label for="edit_minute">Minute:</label>
-                        <select id="edit_minute" name="minute" style="width: 100%;"></select>
+                    <div style="margin-top: 3px; font-size: 0.7rem; color: var(--text-color); opacity: 0.8;">
+                        <span>Local Time: </span>
+                        <span id="edit_local_time_display" style="color: var(--primary-color);">--:--</span>
                     </div>
                 </div>
                 <!-- Right half -->
-                <div style="flex: 1; display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-end;">
-                    <div style="flex-grow: 1;">
-                        <label for="edit_repeat_minutes">Repeat Interval:</label>
-                        <select id="edit_repeat_minutes" name="repeat_minutes" style="width: 100%;">
-                            <option value="0">No Repeat</option>
-                            <option value="fixed">Specific Days</option>
-                            {% for i in range(1, 15) %}
-                            <option value="{{ i * 1440 }}">{{ i }} Day(s)</option>
-                            {% endfor %}
-                        </select>
+                <div style="flex: 1;">
+                    <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-end;">
+                        <div style="flex-grow: 1;">
+                            <label for="edit_repeat_minutes">Repeat Interval:</label>
+                            <select id="edit_repeat_minutes" name="repeat_minutes" style="width: 100%;">
+                                <option value="0">No Repeat</option>
+                                <option value="fixed">Specific Days</option>
+                                {% for i in range(1, 15) %}
+                                <option value="{{ i * 1440 }}">{{ i }} Day(s)</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div style="padding-bottom: 8px;">
+                            <label for="edit_is_enabled">Enabled:</label>
+                            <input type="checkbox" id="edit_is_enabled" name="is_enabled" value="true">
+                        </div>
                     </div>
-                    <div style="padding-bottom: 8px;">
-                        <label for="edit_is_enabled">Enabled:</label>
-                        <input type="checkbox" id="edit_is_enabled" name="is_enabled" value="true">
+                    <div style="margin-top: 3px; font-size: 0.7rem; color: var(--text-color); opacity: 0.8;">
+                        <span id="edit_next_repeat_display">No Repeat</span>
                     </div>
                 </div>
             </div>
@@ -382,7 +416,10 @@
                         <option value="custom">Custom Color...</option>
                     </select>
                     <input type="text" id="edit_embed_color" name="embed_color" style="display: none; flex: 1;">
-                    <button type="button" id="edit_embed_color_picker_btn" style="width: 40px; height: 38px; border: 2px solid var(--border-color); border-radius: 4px; cursor: pointer; padding: 0;"></button>
+                    <button type="button" id="edit_embed_color_picker_btn" style="width: 40px; height: 38px; border: 2px solid var(--border-color); border-radius: 4px; cursor: pointer; padding: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 0.5rem; line-height: 1; font-weight: 600;">
+                        <span style="display: none;">Pick</span>
+                        <span style="display: none;">Color</span>
+                    </button>
                 </div>
                 <label for="edit_embed_footer">Footer:</label>
                 <input type="text" id="edit_embed_footer" name="embed_footer">
@@ -450,35 +487,46 @@
 
             <div class="form-row" style="align-items: flex-end;">
                 <!-- Left half -->
-                <div style="flex: 1; display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end;">
-                    <div style="flex-basis: 46%;">
-                        <label for="add_next_notification_date">Date (UTC):</label>
-                        <input type="text" id="add_next_notification_date" name="next_notification_date" required placeholder="Select Date..." style="width: 100%;">
+                <div style="flex: 1;">
+                    <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end;">
+                        <div style="flex-basis: 46%;">
+                            <label for="add_next_notification_date">Date (UTC):</label>
+                            <input type="text" id="add_next_notification_date" name="next_notification_date" required placeholder="Select Date..." style="width: 100%;">
+                        </div>
+                        <div style="flex-basis: 23%;">
+                            <label for="add_hour">Hour (UTC):</label>
+                            <select id="add_hour" name="hour" style="width: 100%;"></select>
+                        </div>
+                        <div style="flex-basis: 23%;">
+                            <label for="add_minute">Minute (UTC):</label>
+                            <select id="add_minute" name="minute" style="width: 100%;"></select>
+                        </div>
                     </div>
-                    <div style="flex-basis: 23%;">
-                        <label for="add_hour">Hour:</label>
-                        <select id="add_hour" name="hour" style="width: 100%;"></select>
-                    </div>
-                    <div style="flex-basis: 23%;">
-                        <label for="add_minute">Minute:</label>
-                        <select id="add_minute" name="minute" style="width: 100%;"></select>
+                    <div style="margin-top: 3px; font-size: 0.7rem; color: var(--text-color); opacity: 0.8;">
+                        <span>Local Time: </span>
+                        <span id="add_local_time_display" style="color: var(--primary-color);">--:--</span>
                     </div>
                 </div>
                 <!-- Right half -->
-                <div style="flex: 1; display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-end;">
-                    <div style="flex-grow: 1;">
-                        <label for="add_repeat_minutes">Repeat Interval:</label>
-                        <select id="add_repeat_minutes" name="repeat_minutes" style="width: 100%;">
-                            <option value="0">No Repeat</option>
-                            <option value="fixed">Specific Days</option>
-                            {% for i in range(1, 15) %}
-                            <option value="{{ i * 1440 }}">{{ i }} Day(s)</option>
-                            {% endfor %}
-                        </select>
+                <div style="flex: 1;">
+                    <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-end;">
+                        <div style="flex-grow: 1;">
+                            <label for="add_repeat_minutes">Repeat Interval:</label>
+                            <select id="add_repeat_minutes" name="repeat_minutes" style="width: 100%;">
+                                <option value="0">No Repeat</option>
+                                <option value="fixed">Specific Days</option>
+                                {% for i in range(1, 15) %}
+                                <option value="{{ i * 1440 }}">{{ i }} Day(s)</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div style="padding-bottom: 8px;">
+                            <label for="add_is_enabled">Enabled:</label>
+                            <input type="checkbox" id="add_is_enabled" name="is_enabled" value="true" checked>
+                        </div>
                     </div>
-                    <div style="padding-bottom: 8px;">
-                        <label for="add_is_enabled">Enabled:</label>
-                        <input type="checkbox" id="add_is_enabled" name="is_enabled" value="true" checked>
+                    <div style="margin-top: 3px; font-size: 0.7rem; color: var(--text-color); opacity: 0.8;">
+                        <span id="add_next_repeat_display">No Repeat</span>
                     </div>
                 </div>
             </div>
@@ -550,7 +598,10 @@
                         <option value="custom">Custom Color...</option>
                     </select>
                     <input type="text" id="add_embed_color" name="embed_color" style="display: none; flex: 1;">
-                    <button type="button" id="add_embed_color_picker_btn" style="width: 40px; height: 38px; border: 2px solid var(--border-color); border-radius: 4px; cursor: pointer; padding: 0;"></button>
+                    <button type="button" id="add_embed_color_picker_btn" style="width: 40px; height: 38px; border: 2px solid var(--border-color); border-radius: 4px; cursor: pointer; padding: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 0.5rem; line-height: 1; font-weight: 600;">
+                        <span style="display: none;">Pick</span>
+                        <span style="display: none;">Color</span>
+                    </button>
                 </div>
                 <label for="add_embed_footer">Footer:</label>
                 <input type="text" id="add_embed_footer" name="embed_footer" value="DOA Unified Notification System">
@@ -661,6 +712,211 @@ document.addEventListener('DOMContentLoaded', () => {
     // Load thumbnails on page load
     loadThumbnails();
 
+    // ===== TIMEZONE AND TIME FORMAT MANAGEMENT =====
+    const timezoneSelect = document.getElementById('timezone-select');
+    const timeFormatSelect = document.getElementById('time-format-select');
+
+    // Load saved timezone from localStorage or default to UTC
+    const savedTimezone = localStorage.getItem('userTimezone') || 'UTC';
+    timezoneSelect.value = savedTimezone;
+
+    // Load saved time format from localStorage or default to 24-hour
+    const savedTimeFormat = localStorage.getItem('userTimeFormat') || '24';
+    timeFormatSelect.value = savedTimeFormat;
+
+    // Save timezone to localStorage when changed
+    timezoneSelect.addEventListener('change', (e) => {
+        localStorage.setItem('userTimezone', e.target.value);
+        updateAllLocalTimeDisplays();
+        updateCalendarEventTimes();
+        updateAllNextRepeatDisplays();
+    });
+
+    // Save time format to localStorage when changed
+    timeFormatSelect.addEventListener('change', (e) => {
+        localStorage.setItem('userTimeFormat', e.target.value);
+        updateAllLocalTimeDisplays();
+        updateCalendarEventTimes();
+        updateAllNextRepeatDisplays();
+    });
+
+    // Function to convert UTC time to local timezone
+    const convertUTCToLocal = (utcDateStr, utcHour, utcMinute, timezone, use12Hour = false) => {
+        try {
+            // Create a UTC date object
+            const utcDate = new Date(`${utcDateStr}T${String(utcHour).padStart(2, '0')}:${String(utcMinute).padStart(2, '0')}:00Z`);
+
+            // Format in the user's selected timezone
+            const options = {
+                timeZone: timezone,
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: use12Hour
+            };
+
+            const formatter = new Intl.DateTimeFormat('en-US', options);
+            const parts = formatter.formatToParts(utcDate);
+
+            const dateParts = {};
+            parts.forEach(part => {
+                dateParts[part.type] = part.value;
+            });
+
+            // Build time string with AM/PM if 12-hour format
+            let timeStr = `${dateParts.hour}:${dateParts.minute}`;
+            if (use12Hour && dateParts.dayPeriod) {
+                timeStr += ` ${dateParts.dayPeriod}`;
+            }
+
+            return {
+                date: `${dateParts.year}-${dateParts.month}-${dateParts.day}`,
+                time: timeStr,
+                fullDateTime: `${dateParts.year}-${dateParts.month}-${dateParts.day} ${timeStr}`
+            };
+        } catch (error) {
+            console.error('Error converting timezone:', error);
+            return { date: utcDateStr, time: `${utcHour}:${utcMinute}`, fullDateTime: `${utcDateStr} ${utcHour}:${utcMinute}` };
+        }
+    };
+
+    // Function to update local time display for a modal
+    const updateLocalTimeDisplay = (modalPrefix) => {
+        const dateInput = document.getElementById(`${modalPrefix}_next_notification_date`);
+        const hourSelect = document.getElementById(`${modalPrefix}_hour`);
+        const minuteSelect = document.getElementById(`${modalPrefix}_minute`);
+        const display = document.getElementById(`${modalPrefix}_local_time_display`);
+
+        if (!dateInput || !hourSelect || !minuteSelect || !display) return;
+
+        const date = dateInput.value;
+        const hour = parseInt(hourSelect.value);
+        const minute = parseInt(minuteSelect.value);
+        const timezone = timezoneSelect.value;
+        const timeFormatSelect = document.getElementById('time-format-select');
+        const use12Hour = timeFormatSelect ? timeFormatSelect.value === '12' : false;
+
+        if (!date || isNaN(hour) || isNaN(minute)) {
+            display.textContent = '--:--';
+            return;
+        }
+
+        const localTime = convertUTCToLocal(date, hour, minute, timezone, use12Hour);
+        const timezoneName = timezone === 'UTC' ? 'UTC' : timezone.split('/')[1].replace('_', ' ');
+        display.textContent = `${localTime.fullDateTime} (${timezoneName})`;
+    };
+
+    // Function to update all local time displays
+    const updateAllLocalTimeDisplays = () => {
+        updateLocalTimeDisplay('edit');
+        updateLocalTimeDisplay('add');
+        updateNextRepeatDisplay('edit');
+        updateNextRepeatDisplay('add');
+    };
+
+    // Function to calculate and display next repeat date
+    const updateNextRepeatDisplay = (modalPrefix) => {
+        const dateInput = document.getElementById(`${modalPrefix}_next_notification_date`);
+        const hourSelect = document.getElementById(`${modalPrefix}_hour`);
+        const minuteSelect = document.getElementById(`${modalPrefix}_minute`);
+        const repeatSelect = document.getElementById(`${modalPrefix}_repeat_minutes`);
+        const display = document.getElementById(`${modalPrefix}_next_repeat_display`);
+
+        if (!dateInput || !repeatSelect || !display) return;
+
+        const repeatValue = repeatSelect.value;
+        const currentDate = dateInput.value;
+
+        if (repeatValue === '0' || repeatValue === 'fixed') {
+            display.innerHTML = repeatValue === '0' ? 'No Repeat' : 'Specific Days';
+            return;
+        }
+
+        if (!currentDate) {
+            display.innerHTML = 'No Repeat';
+            return;
+        }
+
+        try {
+            // Calculate next repeat date
+            const repeatMinutes = parseInt(repeatValue);
+            const repeatDays = repeatMinutes / 1440;
+            const date = new Date(currentDate);
+            date.setDate(date.getDate() + repeatDays);
+
+            const nextDate = date.toISOString().split('T')[0];
+
+            // Get hour and minute values (these are UTC)
+            const hour = hourSelect ? hourSelect.value : '00';
+            const minute = minuteSelect ? minuteSelect.value : '00';
+
+            // Get time format preference
+            const timeFormatSelect = document.getElementById('time-format-select');
+            const use12Hour = timeFormatSelect ? timeFormatSelect.value === '12' : false;
+
+            // Convert to user's selected timezone
+            const timezone = timezoneSelect.value;
+            if (timezone === 'UTC') {
+                // Display UTC time directly (but still respect 12/24 hour format)
+                if (use12Hour) {
+                    const h = parseInt(hour);
+                    const period = h >= 12 ? 'PM' : 'AM';
+                    const displayHour = h === 0 ? 12 : h > 12 ? h - 12 : h;
+                    const formattedDateTime = `${nextDate} ${displayHour}:${minute} ${period}`;
+                    display.innerHTML = `Next: <span style="color: var(--primary-color);">${formattedDateTime}</span>`;
+                } else {
+                    const formattedDateTime = `${nextDate} ${hour}:${minute}`;
+                    display.innerHTML = `Next: <span style="color: var(--primary-color);">${formattedDateTime}</span>`;
+                }
+            } else {
+                // Convert UTC to local timezone
+                const localTime = convertUTCToLocal(nextDate, parseInt(hour), parseInt(minute), timezone, use12Hour);
+                display.innerHTML = `Next: <span style="color: var(--primary-color);">${localTime.fullDateTime}</span>`;
+            }
+        } catch (error) {
+            display.innerHTML = 'No Repeat';
+        }
+    };
+
+    // Function to update calendar event times based on selected timezone
+    const updateCalendarEventTimes = () => {
+        const timezone = timezoneSelect.value;
+        const timeFormatSelect = document.getElementById('time-format-select');
+        const use12Hour = timeFormatSelect ? timeFormatSelect.value === '12' : false;
+        const allEvents = document.querySelectorAll('.event');
+
+        allEvents.forEach(eventEl => {
+            const utcHour = parseInt(eventEl.dataset.utcHour);
+            const utcMinute = parseInt(eventEl.dataset.utcMinute);
+            const utcDate = eventEl.dataset.utcDate;
+
+            if (!isNaN(utcHour) && !isNaN(utcMinute) && utcDate) {
+                const timeDisplay = eventEl.querySelector('.event-time');
+                if (timeDisplay) {
+                    if (timezone === 'UTC') {
+                        // Show UTC time with selected format
+                        if (use12Hour) {
+                            const period = utcHour >= 12 ? 'PM' : 'AM';
+                            const displayHour = utcHour === 0 ? 12 : utcHour > 12 ? utcHour - 12 : utcHour;
+                            timeDisplay.textContent = `${displayHour}:${String(utcMinute).padStart(2, '0')} ${period}`;
+                        } else {
+                            timeDisplay.textContent = `${utcHour}:${String(utcMinute).padStart(2, '0')}`;
+                        }
+                    } else {
+                        // Convert to local time
+                        const localTime = convertUTCToLocal(utcDate, utcHour, utcMinute, timezone, use12Hour);
+                        timeDisplay.textContent = localTime.time;
+                    }
+                }
+            }
+        });
+    };
+
+    // Update calendar event times on page load
+    updateCalendarEventTimes();
+
     // Setup close buttons for color picker popups
     document.querySelectorAll('.color-picker-close-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -678,6 +934,31 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
+
+    // Helper function to calculate luminance and determine text color
+    const getContrastingTextColor = (hexColor) => {
+        // Remove # if present
+        const hex = hexColor.replace('#', '');
+        // Convert to RGB
+        const r = parseInt(hex.substr(0, 2), 16);
+        const g = parseInt(hex.substr(2, 2), 16);
+        const b = parseInt(hex.substr(4, 2), 16);
+        // Calculate luminance (perceived brightness)
+        const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+        // Return black for light colors, white for dark colors
+        return luminance > 0.5 ? '#000000' : '#ffffff';
+    };
+
+    // Helper function to update button text visibility and color
+    const updateButtonTextDisplay = (button, color, isCustom) => {
+        const spans = button.querySelectorAll('span');
+        spans.forEach(span => {
+            span.style.display = isCustom ? 'block' : 'none';
+            if (isCustom && color) {
+                span.style.color = getContrastingTextColor(color);
+            }
+        });
+    };
 
     // Wait for vanilla-colorful web components to be defined
     const setupColorPicker = async (selectId, textInputId, buttonId, popupId, pickerId, hexInputId, backdropId, defaultColor = '#F94144') => {
@@ -699,6 +980,7 @@ document.addEventListener('DOMContentLoaded', () => {
             hexInput.value = color;
             textInput.value = color;
             button.style.backgroundColor = color;
+            updateButtonTextDisplay(button, color, true);
         });
 
         // Handle hex input manual change
@@ -712,6 +994,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 picker.color = upperValue;
                 textInput.value = upperValue;
                 button.style.backgroundColor = upperValue;
+                updateButtonTextDisplay(button, upperValue, true);
             }
         });
 
@@ -821,6 +1104,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 button.style.backgroundColor = currentColor;
                 picker.color = currentColor;
                 hexInput.value = currentColor;
+                updateButtonTextDisplay(button, currentColor, true);
                 // But keep popup hidden until button clicked
             } else {
                 // Hide text input and disable color picker button
@@ -830,6 +1114,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 button.style.pointerEvents = 'none';
                 button.style.opacity = '0.7';
                 button.style.cursor = 'not-allowed';
+                updateButtonTextDisplay(button, e.target.value, false);
                 popup.classList.remove('active');
                 backdrop.classList.remove('active');
                 popup.style.display = 'none';
@@ -863,6 +1148,7 @@ document.addEventListener('DOMContentLoaded', () => {
             button.style.opacity = '0.7';
             button.style.cursor = 'not-allowed';
             textInput.style.display = 'none';
+            updateButtonTextDisplay(button, initialColor, false);
         } else {
             select.value = 'custom';
             textInput.style.display = 'flex';
@@ -871,6 +1157,7 @@ document.addEventListener('DOMContentLoaded', () => {
             button.style.pointerEvents = 'auto';
             button.style.opacity = '1';
             button.style.cursor = 'pointer';
+            updateButtonTextDisplay(button, initialColor, true);
             // But keep popup hidden until user clicks button
         }
     };
@@ -1010,9 +1297,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (defaultDate) {
                     modal.picker.setDate(defaultDate);
                 }
+
+                // Add listener for date change to update local time display
+                modal.picker.on('selected', () => {
+                    const modalPrefix = modal.id === 'edit-event-modal' ? 'edit' : 'add';
+                    updateLocalTimeDisplay(modalPrefix);
+                    updateNextRepeatDisplay(modalPrefix);
+                });
             }, 0);
         };
         modal.initLitepicker = initLitepicker;
+
+        // Add listeners to hour and minute pickers to update local time display and next repeat display
+        const modalPrefix = modal.id === 'edit-event-modal' ? 'edit' : 'add';
+        hourPicker.addEventListener('change', () => {
+            updateLocalTimeDisplay(modalPrefix);
+            updateNextRepeatDisplay(modalPrefix);
+        });
+        minutePicker.addEventListener('change', () => {
+            updateLocalTimeDisplay(modalPrefix);
+            updateNextRepeatDisplay(modalPrefix);
+        });
+
+        // Add listener to repeat interval dropdown to update next repeat display
+        const repeatPicker = modal.querySelector('[name="repeat_minutes"]');
+        if (repeatPicker) {
+            repeatPicker.addEventListener('change', () => updateNextRepeatDisplay(modalPrefix));
+        }
 
 
         const closeModal = () => {
@@ -1098,6 +1409,12 @@ document.addEventListener('DOMContentLoaded', () => {
         form.querySelector('[name="hour"]').value = now.getUTCHours().toString().padStart(2, '0');
         form.querySelector('[name="minute"]').value = now.getUTCMinutes().toString().padStart(2, '0');
         addModal.initLitepicker(now);
+
+        // Update local time display and next repeat display after populating fields
+        setTimeout(() => {
+            updateLocalTimeDisplay('add');
+            updateNextRepeatDisplay('add');
+        }, 100);
     });
 
     document.querySelectorAll('.event').forEach(eventEl => {
@@ -1176,6 +1493,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 editModal.style.display = 'block';
                 editModal.toggleFields();
                 editModal.initLitepicker(nextNotification);
+
+                // Update local time display and next repeat display after populating fields
+                setTimeout(() => {
+                    updateLocalTimeDisplay('edit');
+                    updateNextRepeatDisplay('edit');
+                }, 100);
 
             } catch (e) {
                 console.error("Error parsing event data or displaying modal:", e);

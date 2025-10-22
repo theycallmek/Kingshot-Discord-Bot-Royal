@@ -218,7 +218,7 @@ async def read_root(request: Request, authenticated: bool = Depends(is_authentic
 
     # Update layout for dark theme
     fig_total.update_layout(
-        title='Total Alliance Town Center Levels Over Time',
+        title='Town Center Level/Days',
         xaxis_title='Date',
         yaxis_title='Total Town Center Level',
         hovermode='x unified',
@@ -226,6 +226,7 @@ async def read_root(request: Request, authenticated: bool = Depends(is_authentic
         plot_bgcolor='#1e1e1e',
         paper_bgcolor='#1e1e1e',
         font=dict(color='#e0e0e0'),
+        margin=dict(l=40, r=10, t=80, b=40),
         legend=dict(
             orientation="h",
             yanchor="bottom",
@@ -289,7 +290,7 @@ async def read_root(request: Request, authenticated: bool = Depends(is_authentic
 
     # Update layout for dark theme
     fig_avg.update_layout(
-        title='Average Alliance Town Center Level Over Time',
+        title='Average Town Center Level/Days',
         xaxis_title='Date',
         yaxis_title='Average Town Center Level',
         hovermode='x unified',
@@ -297,6 +298,7 @@ async def read_root(request: Request, authenticated: bool = Depends(is_authentic
         plot_bgcolor='#1e1e1e',
         paper_bgcolor='#1e1e1e',
         font=dict(color='#e0e0e0'),
+        margin=dict(l=40, r=10, t=80, b=40),
         legend=dict(
             orientation="h",
             yanchor="bottom",

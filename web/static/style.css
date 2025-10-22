@@ -577,7 +577,7 @@ body.light-mode .modal-content select {
     padding: 1rem;
     position: fixed;
     top: 10px;
-    right: 10px;
+    left: 10px;
     z-index: 1001;
     background-color: var(--surface-color);
     border-radius: 5px;
@@ -671,6 +671,14 @@ body.light-mode .event {
     font-weight: 400;
 }
 
+/* Chart styling */
+#allianceProgressChart,
+#allianceAverageChart {
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+}
+
 /* Light mode dashboard styles */
 body.light-mode .dashboard-section {
     background-color: #ffffff;
@@ -679,6 +687,11 @@ body.light-mode .dashboard-section {
 
 body.light-mode .dashboard-section h2 {
     color: #2563eb;
+}
+
+body.light-mode #allianceProgressChart,
+body.light-mode #allianceAverageChart {
+    border: 1px solid #ddd;
 }
 
 @media (max-width: 768px) {
@@ -704,12 +717,39 @@ body.light-mode .dashboard-section h2 {
     }
 
     .content {
-        padding: 1rem 2px;
+        padding: 70px 0 1rem 0;
         margin-left: 0;
+        width: 100%;
+        box-sizing: border-box;
     }
 
     .hamburger {
         display: block;
+    }
+
+    /* Dashboard charts on Mobile */
+    .dashboard-section {
+        padding: 0;
+        margin-bottom: 1rem;
+        margin-left: 3px;
+        margin-right: 5px;
+        border: none;
+        box-shadow: none;
+        background-color: transparent;
+    }
+
+    .dashboard-section h2 {
+        font-size: 1.2rem;
+        margin-bottom: 0.5rem;
+    }
+
+    /* Make charts fill full width on mobile */
+    #allianceProgressChart,
+    #allianceAverageChart {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        min-height: 400px !important;
     }
 
     /* Logs Page on Mobile */
@@ -762,7 +802,41 @@ body.light-mode .dashboard-section h2 {
         flex-direction: column;
     }
 
+    /* Member cards on Mobile */
+    .member-card {
+        margin-left: 3px;
+        margin-right: 3px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+
     /* Calendar on Mobile */
+    .calendar-header {
+        display: grid !important;
+        grid-template-columns: 1fr auto 1fr;
+        grid-template-rows: auto auto;
+        gap: 0.5rem;
+        align-items: center !important;
+    }
+
+    .timezone-controls {
+        grid-column: 1 / -1;
+        grid-row: 1;
+        justify-self: center !important;
+        justify-content: center !important;
+    }
+
+    .month-name {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        text-align: center;
+    }
+
+    .add-event-button {
+        grid-column: 3;
+        grid-row: 2;
+        justify-self: end !important;
+    }
+
     .full-day-name {
         display: none;
     }
