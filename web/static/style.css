@@ -391,6 +391,7 @@ tbody tr:hover {
     max-width: 600px;
     position: relative;
     box-sizing: border-box;
+    overflow: visible;
 }
 
 .modal-content h2 {
@@ -603,6 +604,14 @@ body.light-mode .modal-content select {
     border-radius: 3px;
 }
 
+body.light-mode .event::before {
+    background-color: rgba(255, 255, 255, 0.92);
+}
+
+body.light-mode .event {
+    color: #000000;
+}
+
 .event.disabled::before {
     background-image: linear-gradient(rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.2));
 }
@@ -644,6 +653,32 @@ body.light-mode .modal-content select {
         margin-top: 0; /* Slightly reduced margin-top */
         margin-bottom: 0; /* Ensure no extra space below */
     }
+}
+
+/* Dashboard Styles */
+.dashboard-section {
+    background-color: var(--surface-color);
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.dashboard-section h2 {
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+    font-weight: 400;
+}
+
+/* Light mode dashboard styles */
+body.light-mode .dashboard-section {
+    background-color: #ffffff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+body.light-mode .dashboard-section h2 {
+    color: #2563eb;
 }
 
 @media (max-width: 768px) {

@@ -93,3 +93,10 @@ venv.bak/
 # SQLite
 *.sqlite-shm
 *.sqlite-wal
+
+# Agents
+/.claude/settings.local.json
+/jules-scratch/
+
+# Secrets
+*token.txt

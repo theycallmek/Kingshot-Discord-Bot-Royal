@@ -4,15 +4,196 @@
 
 {% block styles %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/litepicker/dist/css/litepicker.css"/>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vanilla-picker@2/dist/vanilla-picker.min.css"/>
 <link rel="stylesheet" href="/static/dark-mode.css">
 <style>
     .litepicker {
         z-index: 10000 !important;
     }
-    /* Vanilla Picker styling */
-    .picker_wrapper {
-        z-index: 100000 !important;
+
+    /* vanilla-colorful theming for dark mode */
+    hex-color-picker {
+        width: 200px;
+        height: 150px;
+    }
+
+    /* Dark mode styling using CSS Shadow Parts */
+    body:not(.light-mode) hex-color-picker {
+        --vcp-background: #1e1e1e;
+        --vcp-border-color: #2c2c2c;
+    }
+
+    body:not(.light-mode) hex-color-picker::part(saturation) {
+        border: 1px solid #2c2c2c;
+        border-radius: 4px 4px 0 0;
+    }
+
+    body:not(.light-mode) hex-color-picker::part(hue) {
+        border: 1px solid #2c2c2c;
+        border-radius: 0 0 4px 4px;
+        margin-top: 8px;
+    }
+
+    /* Color picker popup card - Centered overlay - HIDDEN by default */
+    .color-picker-popup {
+        position: fixed !important;
+        background-color: #1e1e1e !important;
+        border: 1px solid #2c2c2c !important;
+        border-radius: 12px !important;
+        padding: 15px !important;
+        box-shadow: 0 12px 48px rgba(0, 0, 0, 0.9) !important;
+        z-index: 9999 !important;
+        min-width: 280px !important;
+        left: 50% !important;
+        top: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        pointer-events: auto !important;
+    }
+
+    /* VISIBLE when active */
+    .color-picker-popup.active {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        animation: popupFadeIn 0.15s ease-out;
+        position: fixed !important;
+        left: 50% !important;
+        top: 50% !important;
+        right: auto !important;
+        bottom: auto !important;
+        transform: translate(-50%, -50%) !important;
+        margin: 0 !important;
+    }
+
+    /* Dark mode colors */
+    body:not(.light-mode) .color-picker-popup {
+        background-color: #1e1e1e !important;
+        border-color: #2c2c2c !important;
+    }
+
+    /* Light mode colors */
+    body.light-mode .color-picker-popup {
+        background-color: #ffffff !important;
+        border-color: #ddd !important;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
+    }
+
+    @keyframes popupFadeIn {
+        from {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.95) !important;
+        }
+        to {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1) !important;
+        }
+    }
+
+    /* Ensure active popup stays centered and on top */
+    .color-picker-popup.active {
+        z-index: 10000 !important;
+    }
+
+    /* Backdrop overlay for color picker */
+    .color-picker-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 9998;
+        display: none;
+    }
+
+    .color-picker-backdrop.active {
+        display: block !important;
+    }
+
+    /* Popup card header */
+    .color-picker-popup-header {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--header-color);
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        margin: -15px -15px 15px -15px;
+        padding: 0.75rem 1.5rem;
+        border-bottom: none;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        position: relative;
+    }
+
+    .color-picker-popup-header span {
+        flex: 1;
+        font-weight: 300;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    .color-picker-close-btn {
+        background: none !important;
+        border: none !important;
+        color: var(--text-color) !important;
+        font-size: 1.5rem !important;
+        font-weight: bold !important;
+        cursor: pointer !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        position: relative !important;
+        display: inline-block !important;
+        line-height: 1 !important;
+    }
+
+    .color-picker-close-btn:hover {
+        color: var(--header-color) !important;
+        background: none !important;
+    }
+
+    .color-picker-close-btn:focus {
+        outline: none !important;
+    }
+
+    /* Hex input styling */
+    .color-input-container {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 10px;
+    }
+
+    .color-input-container label {
+        font-size: 12px;
+        color: var(--text-color);
+        min-width: 35px;
+    }
+
+    .color-input-container input {
+        flex: 1;
+        background-color: var(--background-color);
+        border: 2px solid var(--border-color);
+        color: var(--text-color);
+        padding: 0.3rem;
+        border-radius: 4px;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        font-size: 14px;
+        box-sizing: border-box;
+    }
+
+    .color-input-container input:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 2px rgba(0, 168, 255, 0.2);
+    }
+
+    body.light-mode .color-input-container input {
+        background-color: var(--background-color);
+        color: var(--text-color);
+        border-color: var(--border-color);
+    }
+
+    .color-input-container input:focus {
+        outline: none;
+        border-color: #00a8ff;
     }
 </style>
 {% endblock %}
@@ -186,7 +367,7 @@
                 <label for="edit_embed_description">Description:</label>
                 <textarea id="edit_embed_description" name="embed_description" rows="3"></textarea>
                 <label for="edit_embed_color">Color:</label>
-                <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="display: flex; align-items: center; gap: 10px; position: relative;">
                     <select id="edit_embed_color_select" style="flex: 1;">
                         <option value="#F94144">Red (#F94144)</option>
                         <option value="#F3722C">Orange Red (#F3722C)</option>
@@ -201,7 +382,7 @@
                         <option value="custom">Custom Color...</option>
                     </select>
                     <input type="text" id="edit_embed_color" name="embed_color" style="display: none; flex: 1;">
-                    <button type="button" id="edit_embed_color_picker" style="width: 40px; height: 38px; border: 2px solid var(--border-color); border-radius: 4px; cursor: pointer; padding: 0;"></button>
+                    <button type="button" id="edit_embed_color_picker_btn" style="width: 40px; height: 38px; border: 2px solid var(--border-color); border-radius: 4px; cursor: pointer; padding: 0;"></button>
                 </div>
                 <label for="edit_embed_footer">Footer:</label>
                 <input type="text" id="edit_embed_footer" name="embed_footer">
@@ -354,7 +535,7 @@
                 <label for="add_embed_description">Description:</label>
                 <textarea id="add_embed_description" name="embed_description" rows="3"></textarea>
                 <label for="add_embed_color">Color:</label>
-                <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="display: flex; align-items: center; gap: 10px; position: relative;">
                     <select id="add_embed_color_select" style="flex: 1;">
                         <option value="#F94144">Red (#F94144)</option>
                         <option value="#F3722C">Orange Red (#F3722C)</option>
@@ -369,7 +550,7 @@
                         <option value="custom">Custom Color...</option>
                     </select>
                     <input type="text" id="add_embed_color" name="embed_color" style="display: none; flex: 1;">
-                    <button type="button" id="add_embed_color_picker" style="width: 40px; height: 38px; border: 2px solid var(--border-color); border-radius: 4px; cursor: pointer; padding: 0;"></button>
+                    <button type="button" id="add_embed_color_picker_btn" style="width: 40px; height: 38px; border: 2px solid var(--border-color); border-radius: 4px; cursor: pointer; padding: 0;"></button>
                 </div>
                 <label for="add_embed_footer">Footer:</label>
                 <input type="text" id="add_embed_footer" name="embed_footer" value="DOA Unified Notification System">
@@ -403,92 +584,50 @@
         </form>
     </div>
 </div>
+
+<!-- Color Picker Popups (outside modals for proper overlay positioning) -->
+<div id="edit_color_picker_backdrop" class="color-picker-backdrop"></div>
+<div id="edit_color_picker_popup" class="color-picker-popup" style="display: none;">
+    <div class="color-picker-popup-header">
+        <span>Custom Color Picker</span>
+        <button type="button" class="color-picker-close-btn" data-popup="edit_color_picker_popup" data-backdrop="edit_color_picker_backdrop">×</button>
+    </div>
+    <hex-color-picker id="edit_hex_picker" color="#F94144"></hex-color-picker>
+    <div class="color-input-container">
+        <label>Hex:</label>
+        <input type="text" id="edit_hex_input" value="#F94144" maxlength="7" placeholder="#RRGGBB">
+    </div>
+</div>
+
+<div id="add_color_picker_backdrop" class="color-picker-backdrop"></div>
+<div id="add_color_picker_popup" class="color-picker-popup" style="display: none;">
+    <div class="color-picker-popup-header">
+        <span>Custom Color Picker</span>
+        <button type="button" class="color-picker-close-btn" data-popup="add_color_picker_popup" data-backdrop="add_color_picker_backdrop">×</button>
+    </div>
+    <hex-color-picker id="add_hex_picker" color="#F94144"></hex-color-picker>
+    <div class="color-input-container">
+        <label>Hex:</label>
+        <input type="text" id="add_hex_input" value="#F94144" maxlength="7" placeholder="#RRGGBB">
+    </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/litepicker/dist/litepicker.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/vanilla-picker@2/dist/vanilla-picker.min.js"></script>
+<script type="module">
+    // Import vanilla-colorful web components
+    import 'https://cdn.jsdelivr.net/npm/vanilla-colorful@0.7.2/hex-color-picker.js';
+</script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    /* ===== VANILLA PICKER CONFIGURATION (WORKING) =====
-     * Library: vanilla-picker v2
-     * CDN CSS: https://cdn.jsdelivr.net/npm/vanilla-picker@2/dist/vanilla-picker.min.css
-     * CDN JS: https://cdn.jsdelivr.net/npm/vanilla-picker@2/dist/vanilla-picker.min.js
-     * HTML: <button type="button" id="xxx_color_picker"></button>
-     * CSS: .picker_wrapper { z-index: 100000 !important; }
+    /* ===== VANILLA-COLORFUL CONFIGURATION =====
+     * Library: vanilla-colorful v0.7.2
+     * CDN: https://cdn.jsdelivr.net/npm/vanilla-colorful@0.7.2/hex-color-picker.js
+     * HTML: <hex-color-picker color="#RRGGBB"></hex-color-picker>
+     * Theming: CSS Shadow Parts (::part(saturation), ::part(hue))
      * ================================================= */
-
-    // Add dark mode CSS for color picker dynamically to match dashboard theme
-    const isDarkMode = !document.body.classList.contains('light-mode');
-    if (isDarkMode) {
-        const style = document.createElement('style');
-        style.textContent = `
-            /* Match dashboard dark theme colors */
-            .picker_wrapper.popup,
-            .picker_wrapper.popup .picker_arrow::before,
-            .picker_wrapper.popup .picker_arrow::after {
-                background: #1e1e1e !important; /* var(--surface-color) */
-                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5) !important;
-            }
-            .picker_wrapper,
-            .picker_wrapper * {
-                border-color: #2c2c2c !important; /* var(--border-color) */
-            }
-            .picker_wrapper {
-                border: 1px solid #2c2c2c !important;
-            }
-            .picker_wrapper .picker_slider,
-            .picker_wrapper .picker_selector {
-                background: #121212 !important; /* var(--background-color) */
-                border: 1px solid #2c2c2c !important; /* var(--border-color) */
-            }
-            .picker_wrapper .picker_sample {
-                border: 1px solid #2c2c2c !important;
-            }
-            /* Target all slider and selector indicators */
-            .picker_selector .picker_sl,
-            .picker_slider .picker_selector {
-                border: 2px solid #2c2c2c !important; /* var(--border-color) */
-            }
-            /* Alpha slider */
-            .picker_alpha {
-                border: 1px solid #2c2c2c !important; /* var(--border-color) */
-            }
-            /* Hue slider */
-            .picker_hue {
-                border: 1px solid #2c2c2c !important; /* var(--border-color) */
-            }
-            /* Color selection area */
-            .picker_sl {
-                border: 1px solid #2c2c2c !important; /* var(--border-color) */
-            }
-            /* Editor area */
-            .picker_editor {
-                border: 1px solid #2c2c2c !important;
-            }
-            .picker_wrapper input,
-            .picker_wrapper input[type="text"] {
-                background: #121212 !important; /* var(--background-color) */
-                border: 1px solid #2c2c2c !important; /* var(--border-color) */
-                color: #e0e0e0 !important; /* var(--text-color) */
-            }
-            .picker_wrapper input:focus {
-                border-color: #00a8ff !important; /* var(--primary-color) */
-                border: 1px solid #00a8ff !important;
-                outline: none !important;
-            }
-            .picker_wrapper button {
-                background: #2a2a2a !important; /* var(--hover-color) */
-                border: 1px solid #2c2c2c !important; /* var(--border-color) */
-                color: #e0e0e0 !important; /* var(--text-color) */
-            }
-            .picker_wrapper button:hover {
-                background: #00a8ff !important; /* var(--primary-color) */
-                color: #ffffff !important; /* var(--header-color) */
-            }
-        `;
-        document.head.appendChild(style);
-    }
 
     // Load thumbnails dynamically from API
     const loadThumbnails = async () => {
@@ -522,39 +661,167 @@ document.addEventListener('DOMContentLoaded', () => {
     // Load thumbnails on page load
     loadThumbnails();
 
-    // Setup Vanilla Picker for color inputs with dropdown
-    const setupColorPicker = (selectId, textInputId, buttonId, defaultColor = '#F94144') => {
+    // Setup close buttons for color picker popups
+    document.querySelectorAll('.color-picker-close-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const popupId = e.target.dataset.popup;
+            const backdropId = e.target.dataset.backdrop;
+            const popup = document.getElementById(popupId);
+            const backdrop = document.getElementById(backdropId);
+            if (popup) {
+                popup.classList.remove('active');
+                popup.style.display = 'none';
+                popup.style.visibility = 'hidden';
+            }
+            if (backdrop) {
+                backdrop.classList.remove('active');
+            }
+        });
+    });
+
+    // Wait for vanilla-colorful web components to be defined
+    const setupColorPicker = async (selectId, textInputId, buttonId, popupId, pickerId, hexInputId, backdropId, defaultColor = '#F94144') => {
+        // Wait for the web component to be defined
+        await customElements.whenDefined('hex-color-picker');
+
         const select = document.getElementById(selectId);
         const textInput = document.getElementById(textInputId);
         const button = document.getElementById(buttonId);
+        const popup = document.getElementById(popupId);
+        const picker = document.getElementById(pickerId);
+        const hexInput = document.getElementById(hexInputId);
+        const backdrop = document.getElementById(backdropId);
+        const closeBtn = popup.querySelector('.color-picker-close-btn');
 
-        // Check if dark mode is active
-        const isDarkMode = !document.body.classList.contains('light-mode');
+        // Handle picker color change
+        picker.addEventListener('color-changed', (e) => {
+            const color = e.detail.value.toUpperCase();
+            hexInput.value = color;
+            textInput.value = color;
+            button.style.backgroundColor = color;
+        });
 
-        let picker = null;
+        // Handle hex input manual change
+        hexInput.addEventListener('input', (e) => {
+            let value = e.target.value.trim();
+            if (!value.startsWith('#')) {
+                value = '#' + value;
+            }
+            if (/^#[0-9A-Fa-f]{6}$/.test(value)) {
+                const upperValue = value.toUpperCase();
+                picker.color = upperValue;
+                textInput.value = upperValue;
+                button.style.backgroundColor = upperValue;
+            }
+        });
+
+        // Handle button click to toggle popup (ONLY when custom is selected)
+        button.addEventListener('click', (e) => {
+            console.log('Color picker button clicked!');
+            if (select.value === 'custom') {
+                const isActive = popup.classList.toggle('active');
+                backdrop.classList.toggle('active');
+                console.log('Popup active:', isActive);
+                if (isActive) {
+                    // Detect dark/light mode
+                    const isDarkMode = !document.body.classList.contains('light-mode');
+                    const bgColor = isDarkMode ? '#1e1e1e' : '#ffffff';
+                    const borderColor = isDarkMode ? '#2c2c2c' : '#ddd';
+
+                    // Show the popup - override ALL inline hiding styles
+                    popup.style.setProperty('display', 'block', 'important');
+                    popup.style.setProperty('visibility', 'visible', 'important');
+                    popup.style.setProperty('opacity', '1', 'important');
+                    // Force centered positioning
+                    popup.style.setProperty('position', 'fixed', 'important');
+                    popup.style.setProperty('left', '50%', 'important');
+                    popup.style.setProperty('top', '50%', 'important');
+                    popup.style.setProperty('transform', 'translate(-50%, -50%)', 'important');
+                    popup.style.setProperty('right', 'auto', 'important');
+                    popup.style.setProperty('bottom', 'auto', 'important');
+                    popup.style.setProperty('z-index', '10000', 'important');
+                    // Force background and border
+                    popup.style.setProperty('background-color', bgColor, 'important');
+                    popup.style.setProperty('border', `1px solid ${borderColor}`, 'important');
+                    popup.style.setProperty('border-radius', '12px', 'important');
+                    popup.style.setProperty('padding', '15px', 'important');
+                    popup.style.setProperty('box-shadow', '0 12px 48px rgba(0, 0, 0, 0.9)', 'important');
+
+                    // Style the close button to match modal close buttons
+                    if (closeBtn) {
+                        closeBtn.style.setProperty('background', 'none', 'important');
+                        closeBtn.style.setProperty('background-color', 'transparent', 'important');
+                        closeBtn.style.setProperty('border', 'none', 'important');
+                        closeBtn.style.setProperty('box-shadow', 'none', 'important');
+                        closeBtn.style.setProperty('color', 'var(--text-color)', 'important');
+                        closeBtn.style.setProperty('font-size', '1.5rem', 'important');
+                        closeBtn.style.setProperty('font-weight', 'bold', 'important');
+                        closeBtn.style.setProperty('line-height', '1', 'important');
+                        closeBtn.style.setProperty('cursor', 'pointer', 'important');
+                        closeBtn.style.setProperty('font-family', "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", 'important');
+                        closeBtn.style.setProperty('position', 'absolute', 'important');
+                        closeBtn.style.setProperty('top', '0.5rem', 'important');
+                        closeBtn.style.setProperty('right', '1rem', 'important');
+                    }
+
+                    // Style the hex-color-picker to be full width
+                    if (picker) {
+                        picker.style.setProperty('width', '100%', 'important');
+                        picker.style.setProperty('height', '200px', 'important');
+                    }
+
+                    // Style the popup header to move title up
+                    const popupHeader = popup.querySelector('.color-picker-popup-header');
+                    if (popupHeader) {
+                        popupHeader.style.setProperty('padding', '0.5rem', 'important');
+                    }
+
+                    // Style the hex input to match modal inputs
+                    if (hexInput) {
+                        const inputBgColor = isDarkMode ? '#1e1e1e' : '#ffffff';
+                        const inputBorderColor = isDarkMode ? '#2c2c2c' : '#ddd';
+                        const inputTextColor = isDarkMode ? '#e0e0e0' : '#333333';
+
+                        hexInput.style.setProperty('background-color', inputBgColor, 'important');
+                        hexInput.style.setProperty('border', `2px solid ${inputBorderColor}`, 'important');
+                        hexInput.style.setProperty('color', inputTextColor, 'important');
+                        hexInput.style.setProperty('padding', '0.3rem', 'important');
+                        hexInput.style.setProperty('border-radius', '4px', 'important');
+                        hexInput.style.setProperty('font-family', "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", 'important');
+                        hexInput.style.setProperty('font-size', '14px', 'important');
+                        hexInput.style.setProperty('box-sizing', 'border-box', 'important');
+                    }
+
+                    // Style the color input container to balance the layout
+                    const inputContainer = hexInput.parentElement;
+                    if (inputContainer && inputContainer.classList.contains('color-input-container')) {
+                        inputContainer.style.setProperty('margin-top', '15px', 'important');
+                        inputContainer.style.setProperty('justify-content', 'center', 'important');
+                        inputContainer.style.setProperty('padding-left', '1rem', 'important');
+                        inputContainer.style.setProperty('padding-right', '1rem', 'important');
+                    }
+                } else {
+                    // Re-hide the popup
+                    popup.style.setProperty('display', 'none', 'important');
+                    popup.style.setProperty('visibility', 'hidden', 'important');
+                }
+                e.stopPropagation();
+            }
+        });
 
         // Handle dropdown change
         select.addEventListener('change', (e) => {
             if (e.target.value === 'custom') {
-                // Show text input and enable color picker
+                // Show text input and enable color picker button
                 textInput.style.display = 'flex';
                 button.style.pointerEvents = 'auto';
                 button.style.opacity = '1';
-                if (!picker) {
-                    picker = new Picker({
-                        parent: button,
-                        popup: 'left',
-                        alpha: false,
-                        editor: true,
-                        color: textInput.value || defaultColor,
-                        onChange: function(color) {
-                            const hexColor = color.hex.substring(0, 7);
-                            textInput.value = hexColor;
-                            button.style.backgroundColor = hexColor;
-                        }
-                    });
-                }
-                button.style.backgroundColor = textInput.value || defaultColor;
+                button.style.cursor = 'pointer';
+                const currentColor = textInput.value || defaultColor;
+                button.style.backgroundColor = currentColor;
+                picker.color = currentColor;
+                hexInput.value = currentColor;
+                // But keep popup hidden until button clicked
             } else {
                 // Hide text input and disable color picker button
                 textInput.style.display = 'none';
@@ -562,28 +829,40 @@ document.addEventListener('DOMContentLoaded', () => {
                 button.style.backgroundColor = e.target.value;
                 button.style.pointerEvents = 'none';
                 button.style.opacity = '0.7';
-
-                // Close picker if it's open
-                if (picker && picker.settings.parent) {
-                    const pickerPopup = document.querySelector('.picker_wrapper.popup');
-                    if (pickerPopup) {
-                        pickerPopup.classList.remove('open');
-                    }
-                }
+                button.style.cursor = 'not-allowed';
+                popup.classList.remove('active');
+                backdrop.classList.remove('active');
+                popup.style.display = 'none';
+                popup.style.visibility = 'hidden';
             }
+        });
+
+        // Close popup when clicking backdrop
+        backdrop.addEventListener('click', () => {
+            popup.classList.remove('active');
+            backdrop.classList.remove('active');
+            popup.style.display = 'none';
+            popup.style.visibility = 'hidden';
         });
 
         // Set initial button color based on current value
         const initialColor = textInput.value || defaultColor;
         button.style.backgroundColor = initialColor;
+        picker.color = initialColor;
+        hexInput.value = initialColor;
+
+        // IMPORTANT: Always start with popup hidden
+        popup.classList.remove('active');
 
         // Set dropdown to match initial color or custom
-        const matchingOption = Array.from(select.options).find(opt => opt.value === initialColor);
+        const matchingOption = Array.from(select.options).find(opt => opt.value.toUpperCase() === initialColor.toUpperCase());
         if (matchingOption) {
-            select.value = initialColor;
+            select.value = matchingOption.value;
             // Disable picker button for preset colors
             button.style.pointerEvents = 'none';
             button.style.opacity = '0.7';
+            button.style.cursor = 'not-allowed';
+            textInput.style.display = 'none';
         } else {
             select.value = 'custom';
             textInput.style.display = 'flex';
@@ -591,11 +870,59 @@ document.addEventListener('DOMContentLoaded', () => {
             // Enable picker button for custom colors
             button.style.pointerEvents = 'auto';
             button.style.opacity = '1';
+            button.style.cursor = 'pointer';
+            // But keep popup hidden until user clicks button
         }
     };
 
-    setupColorPicker('edit_embed_color_select', 'edit_embed_color', 'edit_embed_color_picker');
-    setupColorPicker('add_embed_color_select', 'add_embed_color', 'add_embed_color_picker');
+    // Setup color pickers (async)
+    setupColorPicker('edit_embed_color_select', 'edit_embed_color', 'edit_embed_color_picker_btn', 'edit_color_picker_popup', 'edit_hex_picker', 'edit_hex_input', 'edit_color_picker_backdrop');
+    setupColorPicker('add_embed_color_select', 'add_embed_color', 'add_embed_color_picker_btn', 'add_color_picker_popup', 'add_hex_picker', 'add_hex_input', 'add_color_picker_backdrop');
+
+    // Function to update event card overlays based on light/dark mode
+    const updateEventOverlays = () => {
+        const isLightMode = document.body.classList.contains('light-mode');
+        const events = document.querySelectorAll('.event');
+
+        events.forEach(event => {
+            const style = event.getAttribute('style');
+            if (style && style.includes('background-image')) {
+                // Extract the URL from the style
+                const urlMatch = style.match(/url\('([^']+)'\)/);
+                if (urlMatch) {
+                    const url = urlMatch[1];
+                    let newStyle = style;
+
+                    if (isLightMode) {
+                        // Replace black gradient with white gradient for light mode
+                        newStyle = newStyle.replace(
+                            /linear-gradient\(rgba\(0,\s*0,\s*0,\s*[\d.]+\),\s*rgba\(0,\s*0,\s*0,\s*[\d.]+\)\)/,
+                            'linear-gradient(rgba(255,255,255,0.85), rgba(255,255,255,0.85))'
+                        );
+                    } else {
+                        // Replace white gradient with black gradient for dark mode
+                        newStyle = newStyle.replace(
+                            /linear-gradient\(rgba\(255,\s*255,\s*255,\s*[\d.]+\),\s*rgba\(255,\s*255,\s*255,\s*[\d.]+\)\)/,
+                            'linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7))'
+                        );
+                    }
+
+                    event.setAttribute('style', newStyle);
+                }
+            }
+        });
+    };
+
+    // Update overlays on page load
+    updateEventOverlays();
+
+    // Listen for theme toggle
+    const themeToggle = document.querySelector('.theme-toggle');
+    if (themeToggle) {
+        themeToggle.addEventListener('click', () => {
+            setTimeout(updateEventOverlays, 50); // Wait for theme class to be applied
+        });
+    }
 
     const editModal = document.getElementById('edit-event-modal');
     const addModal = document.getElementById('add-event-modal');
