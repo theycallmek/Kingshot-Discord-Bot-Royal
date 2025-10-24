@@ -86,29 +86,6 @@
         z-index: 2;
     }
 
-    /* Darker grid lines within the center zone */
-    .grid-cell.center-zone::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        right: 0;
-        bottom: 0;
-        left: 0;
-        border-right: 1px solid rgba(218, 165, 32, 0.6);
-        border-bottom: 1px solid rgba(218, 165, 32, 0.6);
-        z-index: 3;
-        pointer-events: none;
-    }
-
-    /* Remove right border from right-most cells */
-    .grid-cell.center-zone[data-col="8"]::before {
-        border-right: none;
-    }
-
-    /* Remove bottom border from bottom-most cells */
-    .grid-cell.center-zone[data-row="8"]::before {
-        border-bottom: none;
-    }
 
     /* Single 3x3 background square for center zone */
     .grid-container::before {
@@ -120,6 +97,7 @@
         height: calc(3 * 30px + 2 * 2px);
         background-color: rgba(255, 215, 0, 0.3);
         border: 2px solid gold;
+        box-sizing: border-box;
         z-index: 2;
         pointer-events: none;
     }
@@ -178,8 +156,9 @@
     .player-card > div {
         position: relative;
         z-index: 2;
-        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+        text-shadow: 0 0 3px rgba(0, 0, 0, 0.9), 1px 1px 2px rgba(0, 0, 0, 0.8);
         transform: rotate(-45deg);
+        font-weight: 300;
     }
 
     .player-card.used {
@@ -220,76 +199,87 @@
         transform-style: preserve-3d;
     }
 
+    .obstruction-card::before {
+        content: attr(data-emoji);
+        transform: rotate(-45deg);
+        display: block;
+    }
+
     .obstruction-card:hover {
         transform: rotateX(30deg) rotateZ(45deg) scale(1.05);
     }
 
-    /* Directional control buttons - positioned around the 3x3 center zone */
-    .direction-control {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        pointer-events: none;
+    /* Directional buttons on grid cells */
+    .grid-cell.direction-btn {
+        background-color: rgba(255, 255, 255, 0.2);
+        cursor: pointer;
+        transition: background-color 0.2s;
+        user-select: none;
         z-index: 50;
+        border: 1px solid rgba(218, 165, 32, 0.6);
+        box-sizing: border-box;
+        position: relative;
     }
 
-    .direction-btn {
+    /* Move UP button down by 1px (towards center) */
+    .grid-cell.direction-btn[data-direction="up"] {
+        top: 1px;
+    }
+
+    /* Move DOWN button up by 1px (towards center) */
+    .grid-cell.direction-btn[data-direction="down"] {
+        top: -1px;
+    }
+
+    /* Move LEFT button right by 1px (towards center) */
+    .grid-cell.direction-btn[data-direction="left"] {
+        left: 1px;
+    }
+
+    /* Move RIGHT button left by 1px (towards center) */
+    .grid-cell.direction-btn[data-direction="right"] {
+        left: -1px;
+    }
+
+    .grid-cell.direction-btn:hover {
+        background-color: rgba(255, 255, 255, 0.4);
+        transform: scale(1.1);
+    }
+
+    /* Maintain positioning on hover for each direction */
+    .grid-cell.direction-btn[data-direction="up"]:hover {
+        top: 1px;
+    }
+
+    .grid-cell.direction-btn[data-direction="down"]:hover {
+        top: -1px;
+    }
+
+    .grid-cell.direction-btn[data-direction="left"]:hover {
+        left: 1px;
+    }
+
+    .grid-cell.direction-btn[data-direction="right"]:hover {
+        left: -1px;
+    }
+
+    .grid-cell.direction-btn:active {
+        background-color: rgba(255, 255, 255, 0.3);
+    }
+
+    /* Arrow content for direction buttons */
+    .grid-cell.direction-btn::after {
+        content: attr(data-arrow);
         position: absolute;
-        background-color: var(--primary-color);
-        border: 2px solid var(--border-color);
-        border-radius: 50%;
-        color: var(--header-color);
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
         font-size: 1rem;
         font-weight: bold;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: background-color 0.2s, transform 0.1s;
-        user-select: none;
-        pointer-events: auto;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
-        width: 36px;
-        height: 36px;
-        box-sizing: border-box;
-        transform: rotate(45deg);
-    }
-
-    .direction-btn:hover {
-        background-color: var(--hover-color);
-        transform: rotate(45deg) scale(1.15);
-    }
-
-    .direction-btn:active {
-        background-color: var(--primary-color);
-        transform: rotate(45deg) scale(1.0);
-    }
-
-    /* Positioned around the edges of 3x3 center zone */
-    .direction-btn.up {
-        left: calc(1rem + 7 * 30px + 7 * 2px - 18px);
-        top: calc(1rem + 5 * 30px + 5 * 2px - 18px);
-    }
-
-    .direction-btn.down {
-        left: calc(1rem + 7 * 30px + 7 * 2px - 18px);
-        top: calc(1rem + 9 * 30px + 9 * 2px - 18px);
-    }
-
-    .direction-btn.left {
-        left: calc(1rem + 5 * 30px + 5 * 2px - 18px);
-        top: calc(1rem + 7 * 30px + 7 * 2px - 18px);
-    }
-
-    .direction-btn.right {
-        left: calc(1rem + 9 * 30px + 9 * 2px - 18px);
-        top: calc(1rem + 7 * 30px + 7 * 2px - 18px);
-    }
-
-    .direction-btn.center {
-        display: none;
+        color: var(--header-color);
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+        z-index: 51;
+        pointer-events: none;
     }
 
     .placed-player {
@@ -309,6 +299,12 @@
         word-wrap: break-word;
         box-sizing: border-box;
         overflow: hidden;
+        transition: border-color 0.2s;
+    }
+
+    .placed-player.active {
+        border: 2px solid #0066cc;
+        border-radius: 0;
     }
 
     .placed-player::after {
@@ -341,8 +337,9 @@
     .placed-player > div {
         position: relative;
         z-index: 2;
-        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+        text-shadow: 0 0 3px rgba(0, 0, 0, 0.9), 1px 1px 2px rgba(0, 0, 0, 0.8);
         transform: rotate(-45deg);
+        font-weight: 300;
     }
 
     .placed-obstruction {
@@ -359,6 +356,18 @@
         font-weight: bold;
         font-size: 0.7rem;
         box-sizing: border-box;
+        transition: border-color 0.2s;
+    }
+
+    .placed-obstruction::before {
+        content: attr(data-emoji);
+        transform: rotate(-45deg);
+        display: block;
+    }
+
+    .placed-obstruction.active {
+        border: 2px solid #0066cc;
+        border-radius: 0;
     }
 
     .alliance-select {
@@ -505,26 +514,6 @@
             margin-right: auto;
         }
 
-        /* Adjust direction control button positions for mobile */
-        .direction-btn.up {
-            left: calc(0.5rem + 7 * 40px + 7 * 1px - 18px);
-            top: calc(0.5rem + 5 * 40px + 5 * 1px - 18px);
-        }
-
-        .direction-btn.down {
-            left: calc(0.5rem + 7 * 40px + 7 * 1px - 18px);
-            top: calc(0.5rem + 9 * 40px + 9 * 1px - 18px);
-        }
-
-        .direction-btn.left {
-            left: calc(0.5rem + 5 * 40px + 5 * 1px - 18px);
-            top: calc(0.5rem + 7 * 40px + 7 * 1px - 18px);
-        }
-
-        .direction-btn.right {
-            left: calc(0.5rem + 9 * 40px + 9 * 1px - 18px);
-            top: calc(0.5rem + 7 * 40px + 7 * 1px - 18px);
-        }
     }
 </style>
 
@@ -534,14 +523,6 @@
     <div class="map-section">
         <div class="grid-container" id="grid"></div>
 
-        <!-- Directional Control Button -->
-        <div class="direction-control" id="direction-control">
-            <div class="direction-btn up" data-direction="up">▲</div>
-            <div class="direction-btn left" data-direction="left">◀</div>
-            <div class="direction-btn center"></div>
-            <div class="direction-btn right" data-direction="right">▶</div>
-            <div class="direction-btn down" data-direction="down">▼</div>
-        </div>
     </div>
 
     <div class="members-section">
@@ -565,8 +546,7 @@
                     <a href="#" id="sort-alpha-link" class="sort-link">A-Z</a>
                 </div>
             </div>
-            <div class="obstruction-card" draggable="true" data-type="obstruction">
-                🚧
+            <div class="obstruction-card" draggable="true" data-type="obstruction" data-emoji="🚧">
             </div>
             <div id="player-cards"></div>
         </div>
@@ -589,7 +569,21 @@
     let tcSortAscending = false; // Track TC sort direction
     let alphaSortAscending = true; // Track alpha sort direction
     let lastPlacedElement = null; // Track the last placed element for keyboard control
-    const directionControl = document.getElementById('direction-control');
+
+    // Helper function to set active element and remove active class from others
+    function setActiveElement(element) {
+        // Remove active class from all placed items
+        document.querySelectorAll('.placed-player.active, .placed-obstruction.active').forEach(el => {
+            el.classList.remove('active');
+        });
+
+        // Add active class to the new element
+        if (element) {
+            element.classList.add('active');
+        }
+
+        lastPlacedElement = element;
+    }
 
     // Create 15x15 grid
     for (let row = 0; row < 15; row++) {
@@ -604,9 +598,43 @@
                 cell.classList.add('center-zone');
             }
 
-            // Add drop zone listeners
-            cell.addEventListener('dragover', handleDragOver);
-            cell.addEventListener('drop', handleDrop);
+            // Add directional buttons on specific center zone cells (2, 4, 6, 8)
+            // Tile 2: row 6, col 7 (UP - moves items UP/North on grid)
+            // Tile 4: row 7, col 6 (LEFT - moves items LEFT/West on grid)
+            // Tile 6: row 7, col 8 (RIGHT - moves items RIGHT/East on grid)
+            // Tile 8: row 8, col 7 (DOWN - moves items DOWN/South on grid)
+            if ((row === 6 && col === 7) || (row === 7 && col === 6) ||
+                (row === 7 && col === 8) || (row === 8 && col === 7)) {
+                cell.classList.add('direction-btn');
+
+                // Set direction and arrow (arrows point in the direction items will move)
+                if (row === 6 && col === 7) {
+                    // UP button - moves items up (north/top)
+                    cell.dataset.direction = 'up';
+                    cell.dataset.arrow = '▲'; // Arrow points up
+                } else if (row === 7 && col === 6) {
+                    // LEFT button - moves items left (west/left)
+                    cell.dataset.direction = 'left';
+                    cell.dataset.arrow = '◀'; // Arrow points left
+                } else if (row === 7 && col === 8) {
+                    // RIGHT button - moves items right (east/right)
+                    cell.dataset.direction = 'right';
+                    cell.dataset.arrow = '▶'; // Arrow points right
+                } else if (row === 8 && col === 7) {
+                    // DOWN button - moves items down (south/bottom)
+                    cell.dataset.direction = 'down';
+                    cell.dataset.arrow = '▼'; // Arrow points down
+                }
+
+                // Add click listener for direction control
+                cell.addEventListener('click', handleDirectionClick);
+            }
+
+            // Add drop zone listeners (but not on direction buttons)
+            if (!cell.classList.contains('direction-btn')) {
+                cell.addEventListener('dragover', handleDragOver);
+                cell.addEventListener('drop', handleDrop);
+            }
 
             grid.appendChild(cell);
         }
@@ -820,7 +848,7 @@
                 draggedElement.dataset.col = col;
                 draggedElement.style.left = `calc(1rem + ${col} * (30px + 2px))`;
                 draggedElement.style.top = `calc(1rem + ${row} * (30px + 2px))`;
-                lastPlacedElement = draggedElement;
+                setActiveElement(draggedElement);
             } else {
                 // Create new placed player element
                 const placed = document.createElement('div');
@@ -853,13 +881,18 @@
                 placed.style.top = `calc(1rem + ${row} * (30px + 2px))`;
 
                 placed.addEventListener('dragstart', handlePlacedDragStart);
+                placed.addEventListener('click', () => {
+                    // Mark this card as active when clicked
+                    setActiveElement(placed);
+                    showDirectionControl();
+                });
                 placed.addEventListener('dblclick', () => {
                     // Mark player as available again when removed
                     const playerKey = `${currentAllianceId}_${placed.dataset.nickname}`;
                     usedPlayers.delete(playerKey);
                     placed.remove();
                     if (lastPlacedElement === placed) {
-                        lastPlacedElement = null;
+                        setActiveElement(null);
                     }
                     showDirectionControl();
                     renderPlayerCards(); // Re-render to show card as available
@@ -871,7 +904,7 @@
                 renderPlayerCards(); // Re-render to show card as used
 
                 grid.appendChild(placed);
-                lastPlacedElement = placed;
+                setActiveElement(placed);
                 showDirectionControl();
             }
 
@@ -894,12 +927,12 @@
                 draggedElement.dataset.col = col;
                 draggedElement.style.left = `calc(1rem + ${col} * (30px + 2px))`;
                 draggedElement.style.top = `calc(1rem + ${row} * (30px + 2px))`;
-                lastPlacedElement = draggedElement;
+                setActiveElement(draggedElement);
             } else {
                 // Create new placed obstruction element
                 const placed = document.createElement('div');
                 placed.className = 'placed-obstruction';
-                placed.textContent = '🚧';
+                placed.dataset.emoji = '🚧';
                 placed.dataset.type = 'obstruction';
                 placed.dataset.row = row;
                 placed.dataset.col = col;
@@ -912,16 +945,21 @@
                 placed.style.top = `calc(1rem + ${row} * (30px + 2px))`;
 
                 placed.addEventListener('dragstart', handlePlacedDragStart);
+                placed.addEventListener('click', () => {
+                    // Mark this obstruction as active when clicked
+                    setActiveElement(placed);
+                    showDirectionControl();
+                });
                 placed.addEventListener('dblclick', () => {
                     placed.remove();
                     if (lastPlacedElement === placed) {
-                        lastPlacedElement = null;
+                        setActiveElement(null);
                     }
                     showDirectionControl();
                 });
 
                 grid.appendChild(placed);
-                lastPlacedElement = placed;
+                setActiveElement(placed);
                 showDirectionControl();
             }
         }
@@ -931,81 +969,81 @@
 
     // Show/hide direction control based on whether there's a last placed element
     function showDirectionControl() {
-        // Direction control is always visible now
-        // But we can add visual feedback if needed
-        if (lastPlacedElement) {
-            directionControl.style.opacity = '1';
-        } else {
-            directionControl.style.opacity = '0.5';
-        }
+        // Update visual feedback for direction buttons
+        const directionButtons = document.querySelectorAll('.direction-btn');
+        directionButtons.forEach(btn => {
+            if (lastPlacedElement) {
+                btn.style.opacity = '1';
+            } else {
+                btn.style.opacity = '0.5';
+            }
+        });
     }
 
-    // Direction control button handlers
-    document.querySelectorAll('.direction-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const direction = e.target.dataset.direction;
-            if (!direction || !lastPlacedElement) return;
+    // Direction control button click handler
+    function handleDirectionClick(e) {
+        const direction = e.currentTarget.dataset.direction;
+        if (!direction || !lastPlacedElement) return;
 
-            const currentRow = parseInt(lastPlacedElement.dataset.row);
-            const currentCol = parseInt(lastPlacedElement.dataset.col);
-            const type = lastPlacedElement.dataset.type;
-            let newRow = currentRow;
-            let newCol = currentCol;
+        const currentRow = parseInt(lastPlacedElement.dataset.row);
+        const currentCol = parseInt(lastPlacedElement.dataset.col);
+        const type = lastPlacedElement.dataset.type;
+        let newRow = currentRow;
+        let newCol = currentCol;
 
-            // Determine new position based on direction
-            switch(direction) {
-                case 'up':
-                    newRow = currentRow - 1;
-                    break;
-                case 'down':
-                    newRow = currentRow + 1;
-                    break;
-                case 'left':
-                    newCol = currentCol - 1;
-                    break;
-                case 'right':
-                    newCol = currentCol + 1;
-                    break;
+        // Determine new position based on direction
+        switch(direction) {
+            case 'up':
+                newRow = currentRow - 1;
+                break;
+            case 'down':
+                newRow = currentRow + 1;
+                break;
+            case 'left':
+                newCol = currentCol - 1;
+                break;
+            case 'right':
+                newCol = currentCol + 1;
+                break;
+        }
+
+        // Validate and move (reuse existing validation logic)
+        if (type === 'player') {
+            if (newRow < 0 || newRow + 1 >= 15 || newCol < 0 || newCol + 1 >= 15) {
+                return; // Out of bounds
             }
 
-            // Validate and move (reuse existing validation logic)
-            if (type === 'player') {
-                if (newRow < 0 || newRow + 1 >= 15 || newCol < 0 || newCol + 1 >= 15) {
-                    return; // Out of bounds
-                }
+            if (isInCenterZone(newRow, newCol, 2, 2)) {
+                return; // Cannot move into center zone
+            }
 
-                if (isInCenterZone(newRow, newCol, 2, 2)) {
-                    return; // Cannot move into center zone
-                }
-
-                for (let r = newRow; r <= newRow + 1; r++) {
-                    for (let c = newCol; c <= newCol + 1; c++) {
-                        if (isCellOccupied(r, c, lastPlacedElement)) {
-                            return; // Space is occupied
-                        }
+            for (let r = newRow; r <= newRow + 1; r++) {
+                for (let c = newCol; c <= newCol + 1; c++) {
+                    if (isCellOccupied(r, c, lastPlacedElement)) {
+                        return; // Space is occupied
                     }
                 }
-            } else if (type === 'obstruction') {
-                if (newRow < 0 || newRow >= 15 || newCol < 0 || newCol >= 15) {
-                    return; // Out of bounds
-                }
-
-                if (isInCenterZone(newRow, newCol, 1, 1)) {
-                    return; // Cannot move into center zone
-                }
-
-                if (isCellOccupied(newRow, newCol, lastPlacedElement)) {
-                    return; // Cell is occupied
-                }
+            }
+        } else if (type === 'obstruction') {
+            if (newRow < 0 || newRow >= 15 || newCol < 0 || newCol >= 15) {
+                return; // Out of bounds
             }
 
-            // Update position
-            lastPlacedElement.dataset.row = newRow;
-            lastPlacedElement.dataset.col = newCol;
-            lastPlacedElement.style.left = `calc(1rem + ${newCol} * (30px + 2px))`;
-            lastPlacedElement.style.top = `calc(1rem + ${newRow} * (30px + 2px))`;
-        });
-    });
+            if (isInCenterZone(newRow, newCol, 1, 1)) {
+                return; // Cannot move into center zone
+            }
+
+            if (isCellOccupied(newRow, newCol, lastPlacedElement)) {
+                return; // Cell is occupied
+            }
+        }
+
+        // Update position
+        lastPlacedElement.dataset.row = newRow;
+        lastPlacedElement.dataset.col = newCol;
+        lastPlacedElement.style.left = `calc(1rem + ${newCol} * (30px + 2px))`;
+        lastPlacedElement.style.top = `calc(1rem + ${newRow} * (30px + 2px))`;
+    }
 
     function handlePlacedDragStart(e) {
         draggedElement = e.target;
@@ -1016,6 +1054,17 @@
     document.querySelector('.obstruction-card').addEventListener('dragstart', handleDragStart);
     document.querySelector('.obstruction-card').addEventListener('dragend', handleDragEnd);
 
+    // Helper function to flash directional button
+    function flashDirectionButton(direction) {
+        const button = document.querySelector(`.direction-btn[data-direction="${direction}"]`);
+        if (button) {
+            button.style.backgroundColor = 'rgba(255, 255, 255, 0.6)';
+            setTimeout(() => {
+                button.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+            }, 150);
+        }
+    }
+
     // Keyboard controls for nudging last placed card
     document.addEventListener('keydown', (e) => {
         if (!lastPlacedElement) return;
@@ -1025,23 +1074,28 @@
         const type = lastPlacedElement.dataset.type;
         let newRow = currentRow;
         let newCol = currentCol;
+        let direction = null;
 
         // Determine new position based on arrow key
         switch(e.key) {
             case 'ArrowUp':
                 newRow = currentRow - 1;
+                direction = 'up';
                 e.preventDefault();
                 break;
             case 'ArrowDown':
                 newRow = currentRow + 1;
+                direction = 'down';
                 e.preventDefault();
                 break;
             case 'ArrowLeft':
                 newCol = currentCol - 1;
+                direction = 'left';
                 e.preventDefault();
                 break;
             case 'ArrowRight':
                 newCol = currentCol + 1;
+                direction = 'right';
                 e.preventDefault();
                 break;
             default:
@@ -1088,6 +1142,11 @@
         lastPlacedElement.dataset.col = newCol;
         lastPlacedElement.style.left = `calc(1rem + ${newCol} * (30px + 2px))`;
         lastPlacedElement.style.top = `calc(1rem + ${newRow} * (30px + 2px))`;
+
+        // Flash the corresponding direction button
+        if (direction) {
+            flashDirectionButton(direction);
+        }
     });
 </script>
 {% endblock %}
