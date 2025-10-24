@@ -1,0 +1,1093 @@
+{% extends "base.html" %}
+
+{% block title %}Bear Trap Map - DOA Dashboard{% endblock %}
+
+{% block content %}
+<style>
+    .bear-trap-container {
+        display: flex;
+        gap: 2rem;
+        margin-top: 2rem;
+        justify-content: space-between;
+        align-items: start;
+        position: relative;
+    }
+
+    .map-section {
+        position: absolute;
+        left: 0;
+        top: 2rem;
+        perspective: 2000px;
+        perspective-origin: center center;
+        display: flex;
+        justify-content: flex-start;
+        align-items: center;
+        z-index: 0;
+        pointer-events: none;
+        padding-left: 5rem;
+    }
+
+    .members-section {
+        background-color: var(--surface-color);
+        border-radius: 8px;
+        padding: 1.5rem;
+        border: 1px solid var(--border-color);
+        max-height: 80vh;
+        overflow-y: auto;
+        min-width: 300px;
+        max-width: 350px;
+        position: relative;
+        z-index: 10;
+        margin-left: auto;
+    }
+
+    .grid-container {
+        display: grid;
+        grid-template-columns: repeat(15, 30px);
+        grid-template-rows: repeat(15, 30px);
+        gap: 2px;
+        background-color: var(--background-color);
+        padding: 1rem;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+        position: relative;
+        transform: rotateX(30deg) rotateZ(45deg);
+        transform-style: preserve-3d;
+        pointer-events: auto;
+    }
+
+    /* Bear trap background image on center zone */
+    .grid-container::after {
+        content: '';
+        position: absolute;
+        left: calc(1rem + 6 * 30px + 6 * 2px);
+        top: calc(1rem + 6 * 30px + 6 * 2px);
+        width: calc(3 * 30px + 2 * 2px);
+        height: calc(3 * 30px + 2 * 2px);
+        background-image: url('/static/images/bear-trap-active-icon.webp');
+        background-size: contain;
+        background-position: center;
+        background-repeat: no-repeat;
+        transform: rotate(-45deg);
+        pointer-events: none;
+        z-index: 1;
+    }
+
+    .grid-cell {
+        background-color: var(--surface-color);
+        border: 1px solid var(--border-color);
+        position: relative;
+    }
+
+    .grid-cell.center-zone {
+        background-color: transparent;
+        border: none;
+        position: relative;
+        z-index: 2;
+    }
+
+    /* Darker grid lines within the center zone */
+    .grid-cell.center-zone::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        border-right: 1px solid rgba(218, 165, 32, 0.6);
+        border-bottom: 1px solid rgba(218, 165, 32, 0.6);
+        z-index: 3;
+        pointer-events: none;
+    }
+
+    /* Remove right border from right-most cells */
+    .grid-cell.center-zone[data-col="8"]::before {
+        border-right: none;
+    }
+
+    /* Remove bottom border from bottom-most cells */
+    .grid-cell.center-zone[data-row="8"]::before {
+        border-bottom: none;
+    }
+
+    /* Single 3x3 background square for center zone */
+    .grid-container::before {
+        content: '';
+        position: absolute;
+        left: calc(1rem + 6 * 30px + 6 * 2px);
+        top: calc(1rem + 6 * 30px + 6 * 2px);
+        width: calc(3 * 30px + 2 * 2px);
+        height: calc(3 * 30px + 2 * 2px);
+        background-color: rgba(255, 215, 0, 0.3);
+        border: 2px solid gold;
+        z-index: 2;
+        pointer-events: none;
+    }
+
+    .player-card {
+        background-color: var(--primary-color);
+        border-radius: 4px;
+        padding: 0.25rem;
+        cursor: grab;
+        user-select: none;
+        border: 2px solid var(--border-color);
+        font-size: 0.65rem;
+        transition: transform 0.2s;
+        width: 62px;
+        height: 62px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        box-sizing: border-box;
+        flex-shrink: 0;
+        transform: rotateX(30deg) rotateZ(45deg);
+        transform-style: preserve-3d;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .player-card::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        background-image: url('/static/images/player-castle-icon.webp');
+        background-size: 80%;
+        background-position: center;
+        background-repeat: no-repeat;
+        transform: rotate(-45deg);
+        z-index: 0;
+    }
+
+    .player-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        background-color: rgba(0, 168, 255, 0.4);
+        z-index: 1;
+        border-radius: 4px;
+    }
+
+    .player-card > div {
+        position: relative;
+        z-index: 2;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+        transform: rotate(-45deg);
+    }
+
+    .player-card.used {
+        opacity: 0.3;
+        cursor: not-allowed;
+        pointer-events: none;
+    }
+
+    .player-card:hover {
+        transform: rotateX(30deg) rotateZ(45deg) scale(1.05);
+    }
+
+    .player-card.dragging {
+        opacity: 0.8;
+        cursor: grabbing;
+        transform: rotateX(30deg) rotateZ(45deg);
+    }
+
+    .obstruction-card {
+        background-color: #666;
+        border-radius: 4px;
+        padding: 0;
+        margin-bottom: 0.5rem;
+        cursor: grab;
+        user-select: none;
+        border: 2px solid #444;
+        font-size: 0.8rem;
+        text-align: center;
+        color: white;
+        font-weight: bold;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+        transform: rotateX(30deg) rotateZ(45deg);
+        transform-style: preserve-3d;
+    }
+
+    .obstruction-card:hover {
+        transform: rotateX(30deg) rotateZ(45deg) scale(1.05);
+    }
+
+    /* Directional control buttons - positioned around the 3x3 center zone */
+    .direction-control {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 50;
+    }
+
+    .direction-btn {
+        position: absolute;
+        background-color: var(--primary-color);
+        border: 2px solid var(--border-color);
+        border-radius: 50%;
+        color: var(--header-color);
+        font-size: 1rem;
+        font-weight: bold;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background-color 0.2s, transform 0.1s;
+        user-select: none;
+        pointer-events: auto;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+        width: 36px;
+        height: 36px;
+        box-sizing: border-box;
+        transform: rotate(45deg);
+    }
+
+    .direction-btn:hover {
+        background-color: var(--hover-color);
+        transform: rotate(45deg) scale(1.15);
+    }
+
+    .direction-btn:active {
+        background-color: var(--primary-color);
+        transform: rotate(45deg) scale(1.0);
+    }
+
+    /* Positioned around the edges of 3x3 center zone */
+    .direction-btn.up {
+        left: calc(1rem + 7 * 30px + 7 * 2px - 18px);
+        top: calc(1rem + 5 * 30px + 5 * 2px - 18px);
+    }
+
+    .direction-btn.down {
+        left: calc(1rem + 7 * 30px + 7 * 2px - 18px);
+        top: calc(1rem + 9 * 30px + 9 * 2px - 18px);
+    }
+
+    .direction-btn.left {
+        left: calc(1rem + 5 * 30px + 5 * 2px - 18px);
+        top: calc(1rem + 7 * 30px + 7 * 2px - 18px);
+    }
+
+    .direction-btn.right {
+        left: calc(1rem + 9 * 30px + 9 * 2px - 18px);
+        top: calc(1rem + 7 * 30px + 7 * 2px - 18px);
+    }
+
+    .direction-btn.center {
+        display: none;
+    }
+
+    .placed-player {
+        position: absolute;
+        background-color: var(--primary-color);
+        border-radius: 4px;
+        padding: 0.25rem;
+        font-size: 0.55rem;
+        border: 2px solid var(--border-color);
+        cursor: move;
+        z-index: 10;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        word-wrap: break-word;
+        box-sizing: border-box;
+        overflow: hidden;
+    }
+
+    .placed-player::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        background-image: url('/static/images/player-castle-icon.webp');
+        background-size: 80%;
+        background-position: center;
+        background-repeat: no-repeat;
+        transform: rotate(-45deg);
+        z-index: 0;
+    }
+
+    .placed-player::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        background-color: rgba(0, 168, 255, 0.4);
+        z-index: 1;
+        border-radius: 4px;
+    }
+
+    .placed-player > div {
+        position: relative;
+        z-index: 2;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+        transform: rotate(-45deg);
+    }
+
+    .placed-obstruction {
+        position: absolute;
+        background-color: #666;
+        border-radius: 4px;
+        border: 2px solid #444;
+        cursor: move;
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        font-size: 0.7rem;
+        box-sizing: border-box;
+    }
+
+    .alliance-select {
+        margin-bottom: 1.5rem;
+    }
+
+    .sort-links {
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.9rem;
+    }
+
+    .sort-link {
+        color: var(--text-color);
+        text-decoration: none;
+        cursor: pointer;
+        opacity: 0.6;
+        transition: opacity 0.2s;
+    }
+
+    .sort-link:hover {
+        opacity: 1;
+        text-decoration: underline;
+    }
+
+    .sort-link.active {
+        opacity: 1;
+        font-weight: bold;
+        color: var(--primary-color);
+    }
+
+    .alliance-select select {
+        width: 100%;
+        padding: 0.5rem;
+        border-radius: 4px;
+        border: 2px solid var(--border-color);
+        background-color: var(--background-color);
+        color: var(--text-color);
+        font-size: 1rem;
+    }
+
+    .members-list {
+        margin-top: 1rem;
+    }
+
+    #player-cards {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+        perspective: 2000px;
+        perspective-origin: center center;
+    }
+
+    .members-list h3 {
+        color: var(--header-color);
+        margin-bottom: 1rem;
+        font-size: 1.1rem;
+    }
+
+    /* Light mode adjustments */
+    body.light-mode .members-section {
+        background-color: #ffffff;
+    }
+
+    body.light-mode .grid-container {
+        background-color: #f5f5f5;
+    }
+
+    body.light-mode .grid-cell {
+        background-color: #ffffff;
+    }
+
+    body.light-mode .player-card::before {
+        background-color: rgba(0, 168, 255, 0.5);
+    }
+
+    body.light-mode .placed-player::before {
+        background-color: rgba(0, 168, 255, 0.5);
+    }
+
+    body.light-mode .grid-cell.center-zone::before {
+        background-color: rgba(255, 215, 0, 0.4);
+    }
+
+    /* Responsive layout for screens below 1440px */
+    @media (max-width: 1440px) {
+        .bear-trap-container {
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .map-section {
+            position: relative;
+            left: auto;
+            top: auto;
+            padding-left: 0;
+            margin-bottom: 2rem;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .members-section {
+            margin-left: 1rem;
+            margin-right: 1rem;
+            max-width: calc(100% - 2rem);
+            width: calc(100% - 2rem);
+        }
+    }
+
+    /* Mobile responsive */
+    @media (max-width: 768px) {
+        .bear-trap-container {
+            flex-direction: column;
+        }
+
+        .grid-container {
+            grid-template-columns: repeat(15, 40px);
+            grid-template-rows: repeat(15, 40px);
+            gap: 1px;
+            padding: 0.5rem;
+            overflow-x: auto;
+        }
+
+        /* Adjust center zone positioning for mobile */
+        .grid-container::before {
+            left: calc(0.5rem + 6 * 40px + 6 * 1px);
+            top: calc(0.5rem + 6 * 40px + 6 * 1px);
+            width: calc(3 * 40px + 2 * 1px);
+            height: calc(3 * 40px + 2 * 1px);
+        }
+
+        .grid-container::after {
+            left: calc(0.5rem + 6 * 40px + 6 * 1px);
+            top: calc(0.5rem + 6 * 40px + 6 * 1px);
+            width: calc(3 * 40px + 2 * 1px);
+            height: calc(3 * 40px + 2 * 1px);
+        }
+
+        .members-section {
+            max-height: 50vh;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* Adjust direction control button positions for mobile */
+        .direction-btn.up {
+            left: calc(0.5rem + 7 * 40px + 7 * 1px - 18px);
+            top: calc(0.5rem + 5 * 40px + 5 * 1px - 18px);
+        }
+
+        .direction-btn.down {
+            left: calc(0.5rem + 7 * 40px + 7 * 1px - 18px);
+            top: calc(0.5rem + 9 * 40px + 9 * 1px - 18px);
+        }
+
+        .direction-btn.left {
+            left: calc(0.5rem + 5 * 40px + 5 * 1px - 18px);
+            top: calc(0.5rem + 7 * 40px + 7 * 1px - 18px);
+        }
+
+        .direction-btn.right {
+            left: calc(0.5rem + 9 * 40px + 9 * 1px - 18px);
+            top: calc(0.5rem + 7 * 40px + 7 * 1px - 18px);
+        }
+    }
+</style>
+
+<h1>Bear Trap Map</h1>
+
+<div class="bear-trap-container">
+    <div class="map-section">
+        <div class="grid-container" id="grid"></div>
+
+        <!-- Directional Control Button -->
+        <div class="direction-control" id="direction-control">
+            <div class="direction-btn up" data-direction="up">▲</div>
+            <div class="direction-btn left" data-direction="left">◀</div>
+            <div class="direction-btn center"></div>
+            <div class="direction-btn right" data-direction="right">▶</div>
+            <div class="direction-btn down" data-direction="down">▼</div>
+        </div>
+    </div>
+
+    <div class="members-section">
+        <div class="alliance-select">
+            <label for="alliance-dropdown"><strong>Select Alliance:</strong></label>
+            <select id="alliance-dropdown">
+                <option value="">-- Select Alliance --</option>
+                {% for alliance in alliances %}
+                <option value="{{ alliance.alliance_id }}">{{ alliance.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="members-list" id="members-list">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h3 style="margin: 0;">Drag Items to Grid</h3>
+                <div class="sort-links" style="margin-bottom: 0;">
+                    <span><strong>Sort:</strong></span>
+                    <a href="#" id="sort-tc-link" class="sort-link active">TC ↓</a>
+                    <span>|</span>
+                    <a href="#" id="sort-alpha-link" class="sort-link">A-Z</a>
+                </div>
+            </div>
+            <div class="obstruction-card" draggable="true" data-type="obstruction">
+                🚧
+            </div>
+            <div id="player-cards"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const usersByAlliance = JSON.parse('{{ users_by_alliance | tojson | safe }}');
+    const grid = document.getElementById('grid');
+    const allianceDropdown = document.getElementById('alliance-dropdown');
+    const sortTcLink = document.getElementById('sort-tc-link');
+    const sortAlphaLink = document.getElementById('sort-alpha-link');
+    const playerCardsContainer = document.getElementById('player-cards');
+
+    let draggedElement = null;
+    let placedItems = [];
+    let currentAllianceId = null;
+    let usedPlayers = new Set(); // Track which players have been placed
+    let currentSortType = 'tc_desc'; // Default sort: TC high to low
+    let tcSortAscending = false; // Track TC sort direction
+    let alphaSortAscending = true; // Track alpha sort direction
+    let lastPlacedElement = null; // Track the last placed element for keyboard control
+    const directionControl = document.getElementById('direction-control');
+
+    // Create 15x15 grid
+    for (let row = 0; row < 15; row++) {
+        for (let col = 0; col < 15; col++) {
+            const cell = document.createElement('div');
+            cell.className = 'grid-cell';
+            cell.dataset.row = row;
+            cell.dataset.col = col;
+
+            // Mark center 3x3 zone (rows 6-8, cols 6-8)
+            if (row >= 6 && row <= 8 && col >= 6 && col <= 8) {
+                cell.classList.add('center-zone');
+            }
+
+            // Add drop zone listeners
+            cell.addEventListener('dragover', handleDragOver);
+            cell.addEventListener('drop', handleDrop);
+
+            grid.appendChild(cell);
+        }
+    }
+
+    // Sort users based on selected sort option
+    function sortUsers(users, sortType) {
+        const usersCopy = [...users];
+        switch(sortType) {
+            case 'tc_desc':
+                return usersCopy.sort((a, b) => b.furnace_lv - a.furnace_lv);
+            case 'tc_asc':
+                return usersCopy.sort((a, b) => a.furnace_lv - b.furnace_lv);
+            case 'alpha_asc':
+                return usersCopy.sort((a, b) => a.nickname.localeCompare(b.nickname));
+            case 'alpha_desc':
+                return usersCopy.sort((a, b) => b.nickname.localeCompare(a.nickname));
+            default:
+                return usersCopy;
+        }
+    }
+
+    // Render player cards
+    function renderPlayerCards() {
+        playerCardsContainer.innerHTML = '';
+
+        if (currentAllianceId && usersByAlliance[currentAllianceId]) {
+            const sortedUsers = sortUsers(usersByAlliance[currentAllianceId], currentSortType);
+
+            sortedUsers.forEach(user => {
+                const card = document.createElement('div');
+                card.className = 'player-card';
+                card.dataset.type = 'player';
+                card.dataset.nickname = user.nickname;
+                card.dataset.furnaceLv = user.furnace_lv;
+
+                // Check if this player has already been placed
+                const playerKey = `${currentAllianceId}_${user.nickname}`;
+                if (usedPlayers.has(playerKey)) {
+                    card.classList.add('used');
+                    card.draggable = false;
+                } else {
+                    card.draggable = true;
+                    card.addEventListener('dragstart', handleDragStart);
+                    card.addEventListener('dragend', handleDragEnd);
+                }
+
+                // Display nickname and TC level
+                const nameDiv = document.createElement('div');
+                nameDiv.textContent = user.nickname;
+                nameDiv.style.fontSize = '0.65rem';
+
+                const tcDiv = document.createElement('div');
+                tcDiv.textContent = `TC${user.furnace_lv}`;
+                tcDiv.style.fontSize = '0.6rem';
+                tcDiv.style.marginTop = '2px';
+                tcDiv.style.opacity = '0.8';
+
+                card.appendChild(nameDiv);
+                card.appendChild(tcDiv);
+
+                playerCardsContainer.appendChild(card);
+            });
+        }
+    }
+
+    // Alliance dropdown change
+    allianceDropdown.addEventListener('change', (e) => {
+        currentAllianceId = e.target.value;
+        renderPlayerCards();
+    });
+
+    // Sort link click handlers
+    sortTcLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        // Toggle between descending and ascending
+        tcSortAscending = !tcSortAscending;
+        currentSortType = tcSortAscending ? 'tc_asc' : 'tc_desc';
+
+        // Update link text
+        sortTcLink.textContent = tcSortAscending ? 'TC ↑' : 'TC ↓';
+
+        // Update active state
+        sortTcLink.classList.add('active');
+        sortAlphaLink.classList.remove('active');
+
+        renderPlayerCards();
+    });
+
+    sortAlphaLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        // Toggle between A-Z and Z-A
+        alphaSortAscending = !alphaSortAscending;
+        currentSortType = alphaSortAscending ? 'alpha_asc' : 'alpha_desc';
+
+        // Update link text
+        sortAlphaLink.textContent = alphaSortAscending ? 'A-Z' : 'Z-A';
+
+        // Update active state
+        sortAlphaLink.classList.add('active');
+        sortTcLink.classList.remove('active');
+
+        renderPlayerCards();
+    });
+
+    // Drag and drop handlers
+    function handleDragStart(e) {
+        draggedElement = e.target;
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/html', e.target.innerHTML);
+
+        // The dragging class makes it semi-transparent
+        // but the card itself will maintain its diamond shape
+        e.target.classList.add('dragging');
+    }
+
+    function handleDragEnd(e) {
+        e.target.classList.remove('dragging');
+    }
+
+    function handleDragOver(e) {
+        if (e.preventDefault) {
+            e.preventDefault();
+        }
+        e.dataTransfer.dropEffect = 'move';
+        return false;
+    }
+
+    // Helper function to check if a cell is occupied
+    function isCellOccupied(row, col, excludeElement = null) {
+        const placedElements = grid.querySelectorAll('.placed-player, .placed-obstruction');
+        for (let element of placedElements) {
+            if (element === excludeElement) continue;
+
+            const elementRow = parseInt(element.dataset.row);
+            const elementCol = parseInt(element.dataset.col);
+            const elementType = element.dataset.type;
+
+            if (elementType === 'player') {
+                // Player occupies 2x2 cells
+                if (row >= elementRow && row <= elementRow + 1 &&
+                    col >= elementCol && col <= elementCol + 1) {
+                    return true;
+                }
+            } else if (elementType === 'obstruction') {
+                // Obstruction occupies 1x1 cell
+                if (row === elementRow && col === elementCol) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    // Helper function to check if center zone overlaps
+    function isInCenterZone(row, col, width, height) {
+        for (let r = row; r < row + height; r++) {
+            for (let c = col; c < col + width; c++) {
+                if (r >= 6 && r <= 8 && c >= 6 && c <= 8) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    function handleDrop(e) {
+        if (e.stopPropagation) {
+            e.stopPropagation();
+        }
+
+        if (!draggedElement) return false;
+
+        const cell = e.target.closest('.grid-cell');
+        if (!cell) return false;
+
+        const row = parseInt(cell.dataset.row);
+        const col = parseInt(cell.dataset.col);
+        const type = draggedElement.dataset.type;
+
+        // Check if this is a repositioning of an existing placed element
+        const isRepositioning = draggedElement.classList.contains('placed-player') ||
+                                draggedElement.classList.contains('placed-obstruction');
+
+        if (type === 'player') {
+            // Check if 2x2 space is available
+            if (row + 1 >= 15 || col + 1 >= 15) {
+                alert('Not enough space for player card (needs 2x2)');
+                return false;
+            }
+
+            // Check for center zone collision
+            if (isInCenterZone(row, col, 2, 2)) {
+                alert('Cannot place player on center zone (3x3)');
+                return false;
+            }
+
+            // Check for collisions with other placed items
+            for (let r = row; r <= row + 1; r++) {
+                for (let c = col; c <= col + 1; c++) {
+                    if (isCellOccupied(r, c, isRepositioning ? draggedElement : null)) {
+                        alert('Space is occupied by another item');
+                        return false;
+                    }
+                }
+            }
+
+            if (isRepositioning) {
+                // Update position of existing element
+                draggedElement.dataset.row = row;
+                draggedElement.dataset.col = col;
+                draggedElement.style.left = `calc(1rem + ${col} * (30px + 2px))`;
+                draggedElement.style.top = `calc(1rem + ${row} * (30px + 2px))`;
+                lastPlacedElement = draggedElement;
+            } else {
+                // Create new placed player element
+                const placed = document.createElement('div');
+                placed.className = 'placed-player';
+                placed.dataset.type = 'player';
+                placed.dataset.row = row;
+                placed.dataset.col = col;
+                placed.dataset.nickname = draggedElement.dataset.nickname;
+                placed.dataset.furnaceLv = draggedElement.dataset.furnaceLv;
+                placed.draggable = true;
+
+                // Display nickname and TC level
+                const nameDiv = document.createElement('div');
+                nameDiv.textContent = draggedElement.dataset.nickname;
+                nameDiv.style.fontSize = '0.65rem';
+
+                const tcDiv = document.createElement('div');
+                tcDiv.textContent = `TC${draggedElement.dataset.furnaceLv}`;
+                tcDiv.style.fontSize = '0.6rem';
+                tcDiv.style.marginTop = '2px';
+                tcDiv.style.opacity = '0.8';
+
+                placed.appendChild(nameDiv);
+                placed.appendChild(tcDiv);
+
+                // Position: 2x2 cells
+                placed.style.width = '62px'; // 2 cells (30px each) + 1 gap (2px)
+                placed.style.height = '62px';
+                placed.style.left = `calc(1rem + ${col} * (30px + 2px))`;
+                placed.style.top = `calc(1rem + ${row} * (30px + 2px))`;
+
+                placed.addEventListener('dragstart', handlePlacedDragStart);
+                placed.addEventListener('dblclick', () => {
+                    // Mark player as available again when removed
+                    const playerKey = `${currentAllianceId}_${placed.dataset.nickname}`;
+                    usedPlayers.delete(playerKey);
+                    placed.remove();
+                    if (lastPlacedElement === placed) {
+                        lastPlacedElement = null;
+                    }
+                    showDirectionControl();
+                    renderPlayerCards(); // Re-render to show card as available
+                });
+
+                // Mark this player as used
+                const playerKey = `${currentAllianceId}_${draggedElement.dataset.nickname}`;
+                usedPlayers.add(playerKey);
+                renderPlayerCards(); // Re-render to show card as used
+
+                grid.appendChild(placed);
+                lastPlacedElement = placed;
+                showDirectionControl();
+            }
+
+        } else if (type === 'obstruction') {
+            // Check for center zone collision
+            if (isInCenterZone(row, col, 1, 1)) {
+                alert('Cannot place obstruction on center zone (3x3)');
+                return false;
+            }
+
+            // Check if cell is occupied
+            if (isCellOccupied(row, col, isRepositioning ? draggedElement : null)) {
+                alert('Cell is occupied by another item');
+                return false;
+            }
+
+            if (isRepositioning) {
+                // Update position of existing element
+                draggedElement.dataset.row = row;
+                draggedElement.dataset.col = col;
+                draggedElement.style.left = `calc(1rem + ${col} * (30px + 2px))`;
+                draggedElement.style.top = `calc(1rem + ${row} * (30px + 2px))`;
+                lastPlacedElement = draggedElement;
+            } else {
+                // Create new placed obstruction element
+                const placed = document.createElement('div');
+                placed.className = 'placed-obstruction';
+                placed.textContent = '🚧';
+                placed.dataset.type = 'obstruction';
+                placed.dataset.row = row;
+                placed.dataset.col = col;
+                placed.draggable = true;
+
+                // Position: 1x1 cell
+                placed.style.width = '30px';
+                placed.style.height = '30px';
+                placed.style.left = `calc(1rem + ${col} * (30px + 2px))`;
+                placed.style.top = `calc(1rem + ${row} * (30px + 2px))`;
+
+                placed.addEventListener('dragstart', handlePlacedDragStart);
+                placed.addEventListener('dblclick', () => {
+                    placed.remove();
+                    if (lastPlacedElement === placed) {
+                        lastPlacedElement = null;
+                    }
+                    showDirectionControl();
+                });
+
+                grid.appendChild(placed);
+                lastPlacedElement = placed;
+                showDirectionControl();
+            }
+        }
+
+        return false;
+    }
+
+    // Show/hide direction control based on whether there's a last placed element
+    function showDirectionControl() {
+        // Direction control is always visible now
+        // But we can add visual feedback if needed
+        if (lastPlacedElement) {
+            directionControl.style.opacity = '1';
+        } else {
+            directionControl.style.opacity = '0.5';
+        }
+    }
+
+    // Direction control button handlers
+    document.querySelectorAll('.direction-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const direction = e.target.dataset.direction;
+            if (!direction || !lastPlacedElement) return;
+
+            const currentRow = parseInt(lastPlacedElement.dataset.row);
+            const currentCol = parseInt(lastPlacedElement.dataset.col);
+            const type = lastPlacedElement.dataset.type;
+            let newRow = currentRow;
+            let newCol = currentCol;
+
+            // Determine new position based on direction
+            switch(direction) {
+                case 'up':
+                    newRow = currentRow - 1;
+                    break;
+                case 'down':
+                    newRow = currentRow + 1;
+                    break;
+                case 'left':
+                    newCol = currentCol - 1;
+                    break;
+                case 'right':
+                    newCol = currentCol + 1;
+                    break;
+            }
+
+            // Validate and move (reuse existing validation logic)
+            if (type === 'player') {
+                if (newRow < 0 || newRow + 1 >= 15 || newCol < 0 || newCol + 1 >= 15) {
+                    return; // Out of bounds
+                }
+
+                if (isInCenterZone(newRow, newCol, 2, 2)) {
+                    return; // Cannot move into center zone
+                }
+
+                for (let r = newRow; r <= newRow + 1; r++) {
+                    for (let c = newCol; c <= newCol + 1; c++) {
+                        if (isCellOccupied(r, c, lastPlacedElement)) {
+                            return; // Space is occupied
+                        }
+                    }
+                }
+            } else if (type === 'obstruction') {
+                if (newRow < 0 || newRow >= 15 || newCol < 0 || newCol >= 15) {
+                    return; // Out of bounds
+                }
+
+                if (isInCenterZone(newRow, newCol, 1, 1)) {
+                    return; // Cannot move into center zone
+                }
+
+                if (isCellOccupied(newRow, newCol, lastPlacedElement)) {
+                    return; // Cell is occupied
+                }
+            }
+
+            // Update position
+            lastPlacedElement.dataset.row = newRow;
+            lastPlacedElement.dataset.col = newCol;
+            lastPlacedElement.style.left = `calc(1rem + ${newCol} * (30px + 2px))`;
+            lastPlacedElement.style.top = `calc(1rem + ${newRow} * (30px + 2px))`;
+        });
+    });
+
+    function handlePlacedDragStart(e) {
+        draggedElement = e.target;
+        e.dataTransfer.effectAllowed = 'move';
+    }
+
+    // Setup obstruction card drag
+    document.querySelector('.obstruction-card').addEventListener('dragstart', handleDragStart);
+    document.querySelector('.obstruction-card').addEventListener('dragend', handleDragEnd);
+
+    // Keyboard controls for nudging last placed card
+    document.addEventListener('keydown', (e) => {
+        if (!lastPlacedElement) return;
+
+        const currentRow = parseInt(lastPlacedElement.dataset.row);
+        const currentCol = parseInt(lastPlacedElement.dataset.col);
+        const type = lastPlacedElement.dataset.type;
+        let newRow = currentRow;
+        let newCol = currentCol;
+
+        // Determine new position based on arrow key
+        switch(e.key) {
+            case 'ArrowUp':
+                newRow = currentRow - 1;
+                e.preventDefault();
+                break;
+            case 'ArrowDown':
+                newRow = currentRow + 1;
+                e.preventDefault();
+                break;
+            case 'ArrowLeft':
+                newCol = currentCol - 1;
+                e.preventDefault();
+                break;
+            case 'ArrowRight':
+                newCol = currentCol + 1;
+                e.preventDefault();
+                break;
+            default:
+                return;
+        }
+
+        // Validate new position is within grid bounds
+        if (type === 'player') {
+            if (newRow < 0 || newRow + 1 >= 15 || newCol < 0 || newCol + 1 >= 15) {
+                return; // Out of bounds
+            }
+
+            // Check for center zone collision
+            if (isInCenterZone(newRow, newCol, 2, 2)) {
+                return; // Cannot move into center zone
+            }
+
+            // Check for collisions with other placed items
+            for (let r = newRow; r <= newRow + 1; r++) {
+                for (let c = newCol; c <= newCol + 1; c++) {
+                    if (isCellOccupied(r, c, lastPlacedElement)) {
+                        return; // Space is occupied
+                    }
+                }
+            }
+        } else if (type === 'obstruction') {
+            if (newRow < 0 || newRow >= 15 || newCol < 0 || newCol >= 15) {
+                return; // Out of bounds
+            }
+
+            // Check for center zone collision
+            if (isInCenterZone(newRow, newCol, 1, 1)) {
+                return; // Cannot move into center zone
+            }
+
+            // Check if cell is occupied
+            if (isCellOccupied(newRow, newCol, lastPlacedElement)) {
+                return; // Cell is occupied
+            }
+        }
+
+        // Update position
+        lastPlacedElement.dataset.row = newRow;
+        lastPlacedElement.dataset.col = newCol;
+        lastPlacedElement.style.left = `calc(1rem + ${newCol} * (30px + 2px))`;
+        lastPlacedElement.style.top = `calc(1rem + ${newRow} * (30px + 2px))`;
+    });
+</script>
+{% endblock %}
