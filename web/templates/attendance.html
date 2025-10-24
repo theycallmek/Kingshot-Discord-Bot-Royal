@@ -1,0 +1,510 @@
+{% extends "base.html" %}
+
+{% block title %}Attendance - DOA Dashboard{% endblock %}
+
+{% block content %}
+<style>
+    .upload-container {
+        max-width: 1200px;
+        margin: 2rem auto;
+        background-color: var(--surface-color);
+        border-radius: 8px;
+        padding: 2rem;
+        border: 1px solid var(--border-color);
+    }
+
+    .upload-area {
+        border: 2px dashed var(--border-color);
+        border-radius: 8px;
+        padding: 3rem;
+        text-align: center;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        background-color: var(--background-color);
+    }
+
+    .upload-area:hover {
+        border-color: var(--primary-color);
+        background-color: var(--surface-color);
+    }
+
+    .upload-area.dragover {
+        border-color: var(--primary-color);
+        background-color: rgba(0, 168, 255, 0.1);
+        transform: scale(1.02);
+    }
+
+    .upload-icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        color: var(--text-color);
+        opacity: 0.5;
+    }
+
+    .upload-text {
+        font-size: 1.2rem;
+        margin-bottom: 0.5rem;
+        color: var(--header-color);
+    }
+
+    .upload-hint {
+        font-size: 0.9rem;
+        color: var(--text-color);
+        opacity: 0.7;
+    }
+
+    #fileInput {
+        display: none;
+    }
+
+    .images-gallery {
+        margin-top: 2rem;
+        display: none;
+    }
+
+    .images-gallery.active {
+        display: block;
+    }
+
+    .gallery-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid var(--border-color);
+    }
+
+    .gallery-title {
+        font-size: 1.1rem;
+        font-weight: bold;
+        color: var(--header-color);
+    }
+
+    .image-count {
+        font-size: 0.9rem;
+        color: var(--text-color);
+        opacity: 0.8;
+    }
+
+    .gallery-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .gallery-item {
+        position: relative;
+        background-color: var(--background-color);
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+        padding: 0.5rem;
+        transition: transform 0.2s ease;
+    }
+
+    .gallery-item:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .gallery-item-image {
+        width: 100%;
+        height: 200px;
+        object-fit: cover;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+
+    .gallery-item-info {
+        margin-top: 0.5rem;
+        font-size: 0.85rem;
+        color: var(--text-color);
+    }
+
+    .gallery-item-name {
+        font-weight: 500;
+        color: var(--header-color);
+        margin-bottom: 0.25rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .gallery-item-size {
+        opacity: 0.7;
+    }
+
+    .remove-btn {
+        position: absolute;
+        top: 0.75rem;
+        right: 0.75rem;
+        background-color: rgba(220, 53, 69, 0.9);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 1.2rem;
+        transition: all 0.2s ease;
+        z-index: 10;
+    }
+
+    .remove-btn:hover {
+        background-color: rgba(220, 53, 69, 1);
+        transform: scale(1.1);
+    }
+
+    .button-group {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+        justify-content: center;
+    }
+
+    .btn {
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 4px;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-weight: 500;
+    }
+
+    .btn-primary {
+        background-color: var(--primary-color);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        opacity: 0.9;
+        transform: translateY(-2px);
+    }
+
+    .btn-primary:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .btn-secondary {
+        background-color: var(--surface-color);
+        color: var(--text-color);
+        border: 1px solid var(--border-color);
+    }
+
+    .btn-secondary:hover {
+        background-color: var(--background-color);
+    }
+
+    .instructions {
+        margin-bottom: 2rem;
+        padding: 1rem;
+        background-color: var(--background-color);
+        border-left: 4px solid var(--primary-color);
+        border-radius: 4px;
+    }
+
+    .instructions h3 {
+        margin-top: 0;
+        color: var(--header-color);
+    }
+
+    .instructions ul {
+        margin: 0.5rem 0 0 1.5rem;
+        color: var(--text-color);
+    }
+
+    .instructions li {
+        margin-bottom: 0.5rem;
+    }
+
+    /* Modal for full-size image preview */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.9);
+        justify-content: center;
+        align-items: center;
+    }
+
+    .modal.active {
+        display: flex;
+    }
+
+    .modal-content {
+        max-width: 90%;
+        max-height: 90%;
+        object-fit: contain;
+    }
+
+    .modal-close {
+        position: absolute;
+        top: 2rem;
+        right: 2rem;
+        color: white;
+        font-size: 2rem;
+        cursor: pointer;
+        background: none;
+        border: none;
+        padding: 0.5rem;
+        line-height: 1;
+    }
+
+    .modal-close:hover {
+        opacity: 0.7;
+    }
+
+    /* Light mode adjustments */
+    body.light-mode .upload-container {
+        background-color: #ffffff;
+    }
+
+    body.light-mode .upload-area {
+        background-color: #f5f5f5;
+    }
+
+    body.light-mode .upload-area:hover {
+        background-color: #ffffff;
+    }
+
+    body.light-mode .gallery-item {
+        background-color: #f5f5f5;
+    }
+
+    body.light-mode .instructions {
+        background-color: #f5f5f5;
+    }
+</style>
+
+<h1>Event Attendance</h1>
+
+<div class="upload-container">
+    <div class="instructions">
+        <h3>📋 How to Upload</h3>
+        <ul>
+            <li>Take screenshots of the in-game event attendance screen</li>
+            <li>You can upload multiple images for a single event</li>
+            <li>Drag and drop images below, or click to browse</li>
+            <li>Supported formats: PNG, JPG, JPEG (Max 10MB each)</li>
+            <li>The system will automatically read player names and mark attendance</li>
+        </ul>
+    </div>
+
+    <div class="upload-area" id="uploadArea">
+        <div class="upload-icon">📸</div>
+        <div class="upload-text">Drop screenshots here or click to browse</div>
+        <div class="upload-hint">PNG, JPG, JPEG • Multiple files supported • Max 10MB per file</div>
+        <input type="file" id="fileInput" accept="image/png,image/jpeg,image/jpg" multiple />
+    </div>
+
+    <div class="images-gallery" id="imagesGallery">
+        <div class="gallery-header">
+            <div class="gallery-title">Uploaded Screenshots</div>
+            <div class="image-count" id="imageCount">0 images</div>
+        </div>
+        <div class="gallery-grid" id="galleryGrid"></div>
+    </div>
+
+    <div class="button-group">
+        <button class="btn btn-secondary" id="clearAllBtn" style="display: none;">Clear All</button>
+        <button class="btn btn-primary" id="processBtn" disabled>Process Attendance</button>
+    </div>
+</div>
+
+<!-- Modal for full-size image preview -->
+<div class="modal" id="imageModal">
+    <button class="modal-close" id="modalClose">×</button>
+    <img class="modal-content" id="modalImage" alt="Full size preview" />
+</div>
+
+<script>
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('fileInput');
+    const imagesGallery = document.getElementById('imagesGallery');
+    const galleryGrid = document.getElementById('galleryGrid');
+    const imageCount = document.getElementById('imageCount');
+    const processBtn = document.getElementById('processBtn');
+    const clearAllBtn = document.getElementById('clearAllBtn');
+    const imageModal = document.getElementById('imageModal');
+    const modalImage = document.getElementById('modalImage');
+    const modalClose = document.getElementById('modalClose');
+
+    let selectedFiles = [];
+
+    // Click to browse
+    uploadArea.addEventListener('click', () => {
+        fileInput.click();
+    });
+
+    // File selection via input
+    fileInput.addEventListener('change', (e) => {
+        handleFiles(Array.from(e.target.files));
+        fileInput.value = ''; // Reset input to allow re-selecting same files
+    });
+
+    // Drag and drop
+    uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.classList.add('dragover');
+    });
+
+    uploadArea.addEventListener('dragleave', () => {
+        uploadArea.classList.remove('dragover');
+    });
+
+    uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+
+        const files = Array.from(e.dataTransfer.files);
+        handleFiles(files);
+    });
+
+    // Handle multiple file selection
+    function handleFiles(files) {
+        const validTypes = ['image/png', 'image/jpeg', 'image/jpg'];
+        const maxSize = 10 * 1024 * 1024; // 10MB
+
+        files.forEach(file => {
+            // Validate file type
+            if (!validTypes.includes(file.type)) {
+                alert(`"${file.name}" is not a valid image format. Please upload PNG or JPG.`);
+                return;
+            }
+
+            // Validate file size
+            if (file.size > maxSize) {
+                alert(`"${file.name}" is too large. Maximum file size is 10MB.`);
+                return;
+            }
+
+            // Check for duplicates
+            const isDuplicate = selectedFiles.some(f =>
+                f.name === file.name && f.size === file.size
+            );
+
+            if (isDuplicate) {
+                alert(`"${file.name}" is already added.`);
+                return;
+            }
+
+            // Add file to collection
+            selectedFiles.push(file);
+        });
+
+        updateGallery();
+    }
+
+    // Update gallery display
+    function updateGallery() {
+        galleryGrid.innerHTML = '';
+
+        if (selectedFiles.length === 0) {
+            imagesGallery.classList.remove('active');
+            processBtn.disabled = true;
+            clearAllBtn.style.display = 'none';
+            return;
+        }
+
+        imagesGallery.classList.add('active');
+        processBtn.disabled = false;
+        clearAllBtn.style.display = 'inline-block';
+
+        // Update count
+        imageCount.textContent = `${selectedFiles.length} image${selectedFiles.length !== 1 ? 's' : ''}`;
+
+        // Create gallery items
+        selectedFiles.forEach((file, index) => {
+            const item = document.createElement('div');
+            item.className = 'gallery-item';
+
+            const img = document.createElement('img');
+            img.className = 'gallery-item-image';
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+
+            // Click to view full size
+            img.addEventListener('click', () => {
+                modalImage.src = img.src;
+                imageModal.classList.add('active');
+            });
+
+            const info = document.createElement('div');
+            info.className = 'gallery-item-info';
+
+            const name = document.createElement('div');
+            name.className = 'gallery-item-name';
+            name.textContent = file.name;
+            name.title = file.name; // Tooltip for full name
+
+            const size = document.createElement('div');
+            size.className = 'gallery-item-size';
+            const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
+            size.textContent = `${sizeInMB} MB`;
+
+            const removeBtn = document.createElement('button');
+            removeBtn.className = 'remove-btn';
+            removeBtn.innerHTML = '×';
+            removeBtn.title = 'Remove image';
+            removeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                removeImage(index);
+            });
+
+            info.appendChild(name);
+            info.appendChild(size);
+            item.appendChild(removeBtn);
+            item.appendChild(img);
+            item.appendChild(info);
+            galleryGrid.appendChild(item);
+        });
+    }
+
+    // Remove individual image
+    function removeImage(index) {
+        selectedFiles.splice(index, 1);
+        updateGallery();
+    }
+
+    // Clear all images
+    clearAllBtn.addEventListener('click', () => {
+        if (confirm('Are you sure you want to clear all uploaded images?')) {
+            selectedFiles = [];
+            updateGallery();
+        }
+    });
+
+    // Modal close
+    modalClose.addEventListener('click', () => {
+        imageModal.classList.remove('active');
+    });
+
+    imageModal.addEventListener('click', (e) => {
+        if (e.target === imageModal) {
+            imageModal.classList.remove('active');
+        }
+    });
+
+    // Process button (placeholder for now)
+    processBtn.addEventListener('click', () => {
+        if (selectedFiles.length === 0) return;
+
+        // TODO: Implement OCR processing
+        alert(`Ready to process ${selectedFiles.length} image${selectedFiles.length !== 1 ? 's' : ''} for attendance tracking.`);
+    });
+</script>
+{% endblock %}

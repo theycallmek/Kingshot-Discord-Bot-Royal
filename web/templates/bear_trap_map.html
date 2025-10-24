@@ -479,33 +479,40 @@
         }
     }
 
-    /* Mobile responsive */
+    /* Tablet/Mobile responsive - scale grid to fit */
     @media (max-width: 768px) {
         .bear-trap-container {
             flex-direction: column;
         }
 
-        .grid-container {
-            grid-template-columns: repeat(15, 40px);
-            grid-template-rows: repeat(15, 40px);
-            gap: 1px;
-            padding: 0.5rem;
-            overflow-x: auto;
+        .map-section {
+            width: 100%;
+            overflow: visible;
+            display: flex;
+            justify-content: center;
         }
 
-        /* Adjust center zone positioning for mobile */
+        .grid-container {
+            grid-template-columns: repeat(15, 30px);
+            grid-template-rows: repeat(15, 30px);
+            gap: 2px;
+            padding: 0.5rem;
+            transform: rotateX(30deg) rotateZ(45deg) scale(0.85);
+        }
+
+        /* Adjust center zone positioning */
         .grid-container::before {
-            left: calc(0.5rem + 6 * 40px + 6 * 1px);
-            top: calc(0.5rem + 6 * 40px + 6 * 1px);
-            width: calc(3 * 40px + 2 * 1px);
-            height: calc(3 * 40px + 2 * 1px);
+            left: calc(0.5rem + 6 * 30px + 6 * 2px);
+            top: calc(0.5rem + 6 * 30px + 6 * 2px);
+            width: calc(3 * 30px + 2 * 2px);
+            height: calc(3 * 30px + 2 * 2px);
         }
 
         .grid-container::after {
-            left: calc(0.5rem + 6 * 40px + 6 * 1px);
-            top: calc(0.5rem + 6 * 40px + 6 * 1px);
-            width: calc(3 * 40px + 2 * 1px);
-            height: calc(3 * 40px + 2 * 1px);
+            left: calc(0.5rem + 6 * 30px + 6 * 2px);
+            top: calc(0.5rem + 6 * 30px + 6 * 2px);
+            width: calc(3 * 30px + 2 * 2px);
+            height: calc(3 * 30px + 2 * 2px);
         }
 
         .members-section {
@@ -513,7 +520,50 @@
             margin-left: auto;
             margin-right: auto;
         }
+    }
 
+    /* Small mobile - further scale down */
+    @media (max-width: 645px) {
+        .grid-container {
+            grid-template-columns: repeat(15, 25px);
+            grid-template-rows: repeat(15, 25px);
+            gap: 1px;
+            padding: 0.5rem;
+            transform: rotateX(30deg) rotateZ(45deg) scale(0.7);
+        }
+
+        /* Adjust center zone positioning for smaller grid */
+        .grid-container::before {
+            left: calc(0.5rem + 6 * 25px + 6 * 1px);
+            top: calc(0.5rem + 6 * 25px + 6 * 1px);
+            width: calc(3 * 25px + 2 * 1px);
+            height: calc(3 * 25px + 2 * 1px);
+        }
+
+        .grid-container::after {
+            left: calc(0.5rem + 6 * 25px + 6 * 1px);
+            top: calc(0.5rem + 6 * 25px + 6 * 1px);
+            width: calc(3 * 25px + 2 * 1px);
+            height: calc(3 * 25px + 2 * 1px);
+        }
+
+        .placed-player {
+            font-size: 0.45rem;
+            /* Player cards need to be smaller on mobile */
+            width: 51px !important; /* 2 cells (25px each) + 1 gap (1px) */
+            height: 51px !important;
+        }
+
+        .placed-player > div {
+            font-size: 0.45rem;
+        }
+
+        .placed-obstruction {
+            /* Obstructions need to be smaller too */
+            width: 25px !important;
+            height: 25px !important;
+            font-size: 0.6rem;
+        }
     }
 </style>
 
@@ -569,6 +619,18 @@
     let tcSortAscending = false; // Track TC sort direction
     let alphaSortAscending = true; // Track alpha sort direction
     let lastPlacedElement = null; // Track the last placed element for keyboard control
+
+    // Get grid dimensions based on screen size
+    function getGridDimensions() {
+        const width = window.innerWidth;
+        if (width <= 645) {
+            return { cellSize: 25, gap: 1, padding: '0.5rem', playerSize: 51, obstructionSize: 25 };
+        } else if (width <= 768) {
+            return { cellSize: 30, gap: 2, padding: '0.5rem', playerSize: 62, obstructionSize: 30 };
+        } else {
+            return { cellSize: 30, gap: 2, padding: '1rem', playerSize: 62, obstructionSize: 30 };
+        }
+    }
 
     // Helper function to set active element and remove active class from others
     function setActiveElement(element) {
@@ -844,10 +906,11 @@
 
             if (isRepositioning) {
                 // Update position of existing element
+                const dims = getGridDimensions();
                 draggedElement.dataset.row = row;
                 draggedElement.dataset.col = col;
-                draggedElement.style.left = `calc(1rem + ${col} * (30px + 2px))`;
-                draggedElement.style.top = `calc(1rem + ${row} * (30px + 2px))`;
+                draggedElement.style.left = `calc(${dims.padding} + ${col} * (${dims.cellSize}px + ${dims.gap}px))`;
+                draggedElement.style.top = `calc(${dims.padding} + ${row} * (${dims.cellSize}px + ${dims.gap}px))`;
                 setActiveElement(draggedElement);
             } else {
                 // Create new placed player element
@@ -875,10 +938,11 @@
                 placed.appendChild(tcDiv);
 
                 // Position: 2x2 cells
-                placed.style.width = '62px'; // 2 cells (30px each) + 1 gap (2px)
-                placed.style.height = '62px';
-                placed.style.left = `calc(1rem + ${col} * (30px + 2px))`;
-                placed.style.top = `calc(1rem + ${row} * (30px + 2px))`;
+                const dims = getGridDimensions();
+                placed.style.width = `${dims.playerSize}px`;
+                placed.style.height = `${dims.playerSize}px`;
+                placed.style.left = `calc(${dims.padding} + ${col} * (${dims.cellSize}px + ${dims.gap}px))`;
+                placed.style.top = `calc(${dims.padding} + ${row} * (${dims.cellSize}px + ${dims.gap}px))`;
 
                 placed.addEventListener('dragstart', handlePlacedDragStart);
                 placed.addEventListener('click', () => {
@@ -923,10 +987,11 @@
 
             if (isRepositioning) {
                 // Update position of existing element
+                const dims = getGridDimensions();
                 draggedElement.dataset.row = row;
                 draggedElement.dataset.col = col;
-                draggedElement.style.left = `calc(1rem + ${col} * (30px + 2px))`;
-                draggedElement.style.top = `calc(1rem + ${row} * (30px + 2px))`;
+                draggedElement.style.left = `calc(${dims.padding} + ${col} * (${dims.cellSize}px + ${dims.gap}px))`;
+                draggedElement.style.top = `calc(${dims.padding} + ${row} * (${dims.cellSize}px + ${dims.gap}px))`;
                 setActiveElement(draggedElement);
             } else {
                 // Create new placed obstruction element
@@ -939,10 +1004,11 @@
                 placed.draggable = true;
 
                 // Position: 1x1 cell
-                placed.style.width = '30px';
-                placed.style.height = '30px';
-                placed.style.left = `calc(1rem + ${col} * (30px + 2px))`;
-                placed.style.top = `calc(1rem + ${row} * (30px + 2px))`;
+                const dims = getGridDimensions();
+                placed.style.width = `${dims.obstructionSize}px`;
+                placed.style.height = `${dims.obstructionSize}px`;
+                placed.style.left = `calc(${dims.padding} + ${col} * (${dims.cellSize}px + ${dims.gap}px))`;
+                placed.style.top = `calc(${dims.padding} + ${row} * (${dims.cellSize}px + ${dims.gap}px))`;
 
                 placed.addEventListener('dragstart', handlePlacedDragStart);
                 placed.addEventListener('click', () => {
@@ -1039,10 +1105,11 @@
         }
 
         // Update position
+        const dims = getGridDimensions();
         lastPlacedElement.dataset.row = newRow;
         lastPlacedElement.dataset.col = newCol;
-        lastPlacedElement.style.left = `calc(1rem + ${newCol} * (30px + 2px))`;
-        lastPlacedElement.style.top = `calc(1rem + ${newRow} * (30px + 2px))`;
+        lastPlacedElement.style.left = `calc(${dims.padding} + ${newCol} * (${dims.cellSize}px + ${dims.gap}px))`;
+        lastPlacedElement.style.top = `calc(${dims.padding} + ${newRow} * (${dims.cellSize}px + ${dims.gap}px))`;
     }
 
     function handlePlacedDragStart(e) {
@@ -1138,10 +1205,11 @@
         }
 
         // Update position
+        const dims = getGridDimensions();
         lastPlacedElement.dataset.row = newRow;
         lastPlacedElement.dataset.col = newCol;
-        lastPlacedElement.style.left = `calc(1rem + ${newCol} * (30px + 2px))`;
-        lastPlacedElement.style.top = `calc(1rem + ${newRow} * (30px + 2px))`;
+        lastPlacedElement.style.left = `calc(${dims.padding} + ${newCol} * (${dims.cellSize}px + ${dims.gap}px))`;
+        lastPlacedElement.style.top = `calc(${dims.padding} + ${newRow} * (${dims.cellSize}px + ${dims.gap}px))`;
 
         // Flash the corresponding direction button
         if (direction) {

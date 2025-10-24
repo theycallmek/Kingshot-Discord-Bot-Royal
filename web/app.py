@@ -494,6 +494,16 @@ async def bear_trap_map(request: Request, authenticated: bool = Depends(is_authe
         "users_by_alliance": users_by_alliance
     })
 
+
+@app.get("/attendance", response_class=HTMLResponse)
+async def attendance(request: Request, authenticated: bool = Depends(is_authenticated)):
+    if not authenticated:
+        return RedirectResponse(url="/login", status_code=303)
+
+    return templates.TemplateResponse("attendance.html", {
+        "request": request
+    })
+
 def dec_to_hex(decimal_color):
     if decimal_color is None:
         return None
