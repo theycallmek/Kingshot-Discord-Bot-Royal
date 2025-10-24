@@ -182,16 +182,18 @@ async def read_root(request: Request, authenticated: bool = Depends(is_authentic
     
     # Calculate totals and prepare data for Plotly
 
-    # Get alliance nicknames from database
+    # Get all alliances from database dynamically
+    all_alliances = alliance_session.exec(select(Alliance)).all()
+    target_alliances = [str(alliance.alliance_id) for alliance in all_alliances]
     alliance_nicknames = get_alliance_nicknames(alliance_session)
 
-    # Filter to only include alliances 1, 2, 3
-    target_alliances = ['1', '2', '3']
+    # Generate colors dynamically for each alliance
+    color_palette = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E2', '#F8B195', '#C06C84']
+    colors = {aid: color_palette[i % len(color_palette)] for i, aid in enumerate(target_alliances)}
+    alliance_names = {aid: alliance_nicknames.get(aid, f'Alliance {aid}') for aid in target_alliances}
 
     # Prepare traces for each alliance (TOTAL graph)
     traces_total = []
-    colors = {'1': '#FF6B6B', '2': '#4ECDC4', '3': '#45B7D1'}
-    alliance_names = {aid: alliance_nicknames.get(aid, f'Alliance {aid}') for aid in target_alliances}
 
     for alliance in target_alliances:
         dates = []
@@ -310,11 +312,140 @@ async def read_root(request: Request, authenticated: bool = Depends(is_authentic
 
     # Convert average graph to JSON
     graph_avg_json = json.dumps(fig_avg, cls=plotly.utils.PlotlyJSONEncoder)
-    
+
+    # --- NEW: Furnace Level Distribution Histogram ---
+    # Get current furnace levels for all users in target alliances
+    furnace_distribution = defaultdict(lambda: defaultdict(int))
+
+    for user in users:
+        if user.alliance in target_alliances and user.furnace_lv:
+            furnace_distribution[user.alliance][user.furnace_lv] += 1
+
+    # Create histogram traces for each alliance
+    hist_traces = []
+
+    for alliance in target_alliances:
+        if furnace_distribution[alliance]:
+            levels = sorted(furnace_distribution[alliance].keys())
+            counts = [furnace_distribution[alliance][level] for level in levels]
+
+            hist_traces.append(go.Bar(
+                x=levels,
+                y=counts,
+                name=alliance_names[alliance],
+                marker=dict(color=colors[alliance]),
+                hovertemplate='<b>TC Level %{x}</b><br>Members: %{y}<extra></extra>'
+            ))
+
+    # Create the histogram figure
+    fig_hist = go.Figure(data=hist_traces)
+
+    # Update layout for dark theme
+    fig_hist.update_layout(
+        title='Town Center Level Distribution',
+        xaxis_title='Town Center Level',
+        yaxis_title='Number of Members',
+        barmode='group',
+        template='plotly_dark',
+        plot_bgcolor='#1e1e1e',
+        paper_bgcolor='#1e1e1e',
+        font=dict(color='#e0e0e0'),
+        margin=dict(l=40, r=10, t=80, b=40),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+        ),
+        xaxis=dict(
+            tickmode='linear',
+            tick0=0,
+            dtick=1
+        )
+    )
+
+    # Convert histogram to JSON
+    graph_hist_json = json.dumps(fig_hist, cls=plotly.utils.PlotlyJSONEncoder)
+
+    # --- NEW: Town Center Level Heatmap ---
+    # Create a heatmap showing TC level distribution across alliances
+    # Group TC levels into ranges for better visualization
+    tc_ranges = [
+        (1, 10, 'TC 1-10'),
+        (11, 15, 'TC 11-15'),
+        (16, 20, 'TC 16-20'),
+        (21, 25, 'TC 21-25'),
+        (26, 30, 'TC 26-30'),
+        (31, 35, 'TC 31-35'),
+        (36, 40, 'TC 36-40'),
+        (41, 50, 'TC 41-50')
+    ]
+
+    # Create matrix: rows = alliances, columns = TC ranges
+    heatmap_data = []
+    alliance_labels = []
+
+    for alliance in target_alliances:
+        alliance_labels.append(alliance_names[alliance])
+        row_data = []
+
+        for min_tc, max_tc, _ in tc_ranges:
+            count = 0
+            for user in users:
+                if user.alliance == alliance and user.furnace_lv:
+                    if min_tc <= user.furnace_lv <= max_tc:
+                        count += 1
+            row_data.append(count)
+
+        heatmap_data.append(row_data)
+
+    # Create column labels
+    column_labels = [label for _, _, label in tc_ranges]
+
+    # Create heatmap figure
+    fig_heatmap = go.Figure(data=go.Heatmap(
+        z=heatmap_data,
+        x=column_labels,
+        y=alliance_labels,
+        colorscale='Viridis',
+        hoverongaps=False,
+        hovertemplate='<b>%{y}</b><br>%{x}<br>Members: %{z}<extra></extra>',
+        colorbar=dict(
+            title=dict(
+                text='Members',
+                side='right'
+            ),
+            tickmode='linear',
+            tick0=0,
+            dtick=1
+        )
+    ))
+
+    # Update layout for dark theme
+    fig_heatmap.update_layout(
+        title='Town Center Level Heatmap',
+        xaxis_title='Town Center Level Range',
+        yaxis_title='Alliance',
+        template='plotly_dark',
+        plot_bgcolor='#1e1e1e',
+        paper_bgcolor='#1e1e1e',
+        font=dict(color='#e0e0e0'),
+        margin=dict(l=40, r=10, t=80, b=40)
+    )
+
+    # Reverse y-axis to show alliances in order
+    fig_heatmap.update_yaxes(autorange='reversed')
+
+    # Convert heatmap to JSON
+    graph_heatmap_json = json.dumps(fig_heatmap, cls=plotly.utils.PlotlyJSONEncoder)
+
     return templates.TemplateResponse("dashboard.html", {
         "request": request,
         "graph_json": graph_json,
-        "graph_avg_json": graph_avg_json
+        "graph_avg_json": graph_avg_json,
+        "graph_hist_json": graph_hist_json,
+        "graph_heatmap_json": graph_heatmap_json
     })
 
 @app.get("/members", response_class=HTMLResponse)
@@ -330,6 +461,37 @@ async def read_members(request: Request, authenticated: bool = Depends(is_authen
         "request": request,
         "users": users,
         "alliance_nicknames": alliance_nicknames
+    })
+
+@app.get("/bear-trap-map", response_class=HTMLResponse)
+async def bear_trap_map(request: Request, authenticated: bool = Depends(is_authenticated),
+                        session: Session = Depends(get_users_session),
+                        alliance_session: Session = Depends(get_alliance_session)):
+    if not authenticated:
+        return RedirectResponse(url="/login", status_code=303)
+
+    # Get all alliances
+    alliances = alliance_session.exec(select(Alliance)).all()
+
+    # Get all users
+    users = session.exec(select(User)).all()
+
+    # Group users by alliance and convert to dictionaries
+    users_by_alliance = {}
+    for user in users:
+        alliance_id = str(user.alliance)
+        if alliance_id not in users_by_alliance:
+            users_by_alliance[alliance_id] = []
+        users_by_alliance[alliance_id].append({
+            "nickname": user.nickname,
+            "fid": user.fid,
+            "furnace_lv": user.furnace_lv
+        })
+
+    return templates.TemplateResponse("bear_trap_map.html", {
+        "request": request,
+        "alliances": alliances,
+        "users_by_alliance": users_by_alliance
     })
 
 def dec_to_hex(decimal_color):
