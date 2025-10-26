@@ -11,13 +11,28 @@
 </div>
 
 <div class="dashboard-section">
+    <div id="bearTrapChart" style="width: 100%; height: 400px;"></div>
+</div>
+
+<div class="dashboard-section">
     <div id="allianceAverageChart" style="width: 100%; height: 400px;"></div>
+</div>
+
+<div class="dashboard-section">
+    <div id="furnaceDistributionChart" style="width: 100%; height: 400px;"></div>
+</div>
+
+<div class="dashboard-section">
+    <div id="tcLevelHeatmap" style="width: 100%; height: 400px;"></div>
 </div>
 
 <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
 <script>
     var graphData = {{ graph_json | safe }};
+    var graphBearTrapData = {{ graph_bear_trap_json | safe }};
     var graphAvgData = {{ graph_avg_json | safe }};
+    var graphHistData = {{ graph_hist_json | safe }};
+    var graphHeatmapData = {{ graph_heatmap_json | safe }};
 
     // Function to update chart theme
     function updateChartTheme() {
@@ -33,14 +48,20 @@
         };
 
         Plotly.relayout('allianceProgressChart', layoutUpdate);
+        Plotly.relayout('bearTrapChart', layoutUpdate);
         Plotly.relayout('allianceAverageChart', layoutUpdate);
+        Plotly.relayout('furnaceDistributionChart', layoutUpdate);
+        Plotly.relayout('tcLevelHeatmap', layoutUpdate);
     }
 
     // Wait for DOM to be ready and theme to be applied
     window.addEventListener('load', function() {
         // Initial plot
         Plotly.newPlot('allianceProgressChart', graphData.data, graphData.layout, {responsive: true});
+        Plotly.newPlot('bearTrapChart', graphBearTrapData.data, graphBearTrapData.layout, {responsive: true});
         Plotly.newPlot('allianceAverageChart', graphAvgData.data, graphAvgData.layout, {responsive: true});
+        Plotly.newPlot('furnaceDistributionChart', graphHistData.data, graphHistData.layout, {responsive: true});
+        Plotly.newPlot('tcLevelHeatmap', graphHeatmapData.data, graphHeatmapData.layout, {responsive: true});
 
         // Update theme immediately after plotting
         setTimeout(updateChartTheme, 100);

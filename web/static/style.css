@@ -50,6 +50,7 @@ a {
     display: flex;
     flex-direction: column;
     flex-shrink: 0;
+    z-index: 100;
 }
 
 .sidebar .logo {
@@ -76,7 +77,9 @@ a {
 
 .sidebar ul li a {
     color: var(--text-color);
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
     padding: 0.8rem 1rem;
     border-radius: 4px;
     margin-bottom: 0.5rem;
@@ -86,6 +89,13 @@ a {
 .sidebar ul li a:hover, .sidebar ul li a.active {
     background-color: var(--primary-color);
     color: var(--header-color);
+}
+
+.menu-icon {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    stroke: currentColor;
 }
 
 .main-container {
@@ -157,9 +167,28 @@ tbody tr:hover {
     margin-bottom: 1rem;
     border: 1px solid var(--border-color);
     border-radius: 4px;
-    background-color: var(--background-color);
-    color: var(--text-color);
+    background-color: var(--background-color) !important;
+    color: var(--text-color) !important;
     box-sizing: border-box;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+}
+
+.login-container input[type="password"]:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(0, 168, 255, 0.2);
+}
+
+/* Override browser autofill styles */
+.login-container input[type="password"]:-webkit-autofill,
+.login-container input[type="password"]:-webkit-autofill:hover,
+.login-container input[type="password"]:-webkit-autofill:focus {
+    -webkit-text-fill-color: var(--text-color) !important;
+    -webkit-box-shadow: 0 0 0px 1000px var(--background-color) inset !important;
+    box-shadow: 0 0 0px 1000px var(--background-color) inset !important;
+    transition: background-color 5000s ease-in-out 0s;
 }
 
 .login-container button {
@@ -208,11 +237,72 @@ tbody tr:hover {
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
 }
 
+.member-card-content {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+}
+
+.member-avatar {
+    width: 70px;
+    height: 70px;
+    border-radius: 8px;
+    object-fit: cover;
+    border: 2px solid var(--primary-color);
+    flex-shrink: 0;
+}
+
+.member-avatar-placeholder {
+    width: 70px;
+    height: 70px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--border-color) 0%, var(--hover-color) 100%);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.member-avatar-placeholder::before {
+    content: "👤";
+    font-size: 2rem;
+    opacity: 0.5;
+}
+
+.member-info {
+    flex: 1;
+    min-width: 0;
+}
+
 .member-card h3 {
     margin-top: 0;
     color: var(--primary-color);
     font-weight: 600;
     margin-bottom: 0.5rem;
+}
+
+/* Progress Bar Styles */
+.progress-bar-container {
+    width: 100%;
+    height: 24px;
+    background-color: var(--background-color);
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary-color) 0%, #4ecdc4 100%);
+    border-radius: 12px;
+    transition: width 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 0.85rem;
+    box-shadow: 0 2px 4px rgba(0, 168, 255, 0.3);
 }
 
 .card-details {
@@ -547,28 +637,55 @@ body.light-mode .modal-content select {
     background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23333333' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
 }
 
-.theme-toggle {
+.sidebar-footer {
     margin-top: 1rem;
     padding-top: 0.5rem;
     border-top: 1px solid var(--border-color);
-    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: center;
     flex-shrink: 0;
 }
 
-#theme-toggle-button {
-    width: 100%;
-    padding: 0.8rem;
-    border: none;
-    border-radius: 4px;
-    background-color: var(--primary-color);
-    color: var(--header-color);
-    cursor: pointer;
-    font-size: 1rem;
-    transition: background-color 0.2s ease;
+.footer-icons {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
 }
 
-#theme-toggle-button:hover {
-    opacity: 0.9;
+.footer-credit {
+    font-size: 0.65rem;
+    color: var(--text-color);
+    opacity: 0.5;
+    text-align: center;
+    line-height: 1.2;
+}
+
+.icon-button {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: none;
+    border-radius: 8px;
+    background-color: var(--hover-color);
+    color: var(--text-color);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    text-decoration: none;
+}
+
+.icon-button:hover {
+    background-color: var(--primary-color);
+    color: var(--header-color);
+}
+
+.icon-button svg {
+    width: 20px;
+    height: 20px;
 }
 
 .hamburger {
@@ -673,7 +790,9 @@ body.light-mode .event {
 
 /* Chart styling */
 #allianceProgressChart,
-#allianceAverageChart {
+#allianceAverageChart,
+#furnaceDistributionChart,
+#tcLevelHeatmap {
     border-radius: 8px;
     border: 1px solid var(--border-color);
     overflow: hidden;
@@ -690,7 +809,9 @@ body.light-mode .dashboard-section h2 {
 }
 
 body.light-mode #allianceProgressChart,
-body.light-mode #allianceAverageChart {
+body.light-mode #allianceAverageChart,
+body.light-mode #furnaceDistributionChart,
+body.light-mode #tcLevelHeatmap {
     border: 1px solid #ddd;
 }
 
@@ -745,7 +866,9 @@ body.light-mode #allianceAverageChart {
 
     /* Make charts fill full width on mobile */
     #allianceProgressChart,
-    #allianceAverageChart {
+    #allianceAverageChart,
+    #furnaceDistributionChart,
+    #tcLevelHeatmap {
         margin: 0 !important;
         padding: 0 !important;
         width: 100% !important;
@@ -807,6 +930,16 @@ body.light-mode #allianceAverageChart {
         margin-left: 3px;
         margin-right: 3px;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+
+    .member-avatar,
+    .member-avatar-placeholder {
+        width: 60px;
+        height: 60px;
+    }
+
+    .member-card-content {
+        gap: 0.75rem;
     }
 
     /* Calendar on Mobile */

@@ -729,7 +729,6 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('userTimezone', e.target.value);
         updateAllLocalTimeDisplays();
         updateCalendarEventTimes();
-        updateAllNextRepeatDisplays();
     });
 
     // Save time format to localStorage when changed
@@ -737,7 +736,6 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('userTimeFormat', e.target.value);
         updateAllLocalTimeDisplays();
         updateCalendarEventTimes();
-        updateAllNextRepeatDisplays();
     });
 
     // Function to convert UTC time to local timezone

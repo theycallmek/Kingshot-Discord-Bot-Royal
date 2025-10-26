@@ -3,25 +3,49 @@
 {% block title %}Members - DOA Dashboard{% endblock %}
 
 {% block content %}
-<h1>Alliance Members</h1>
-<div class="sort-headers">
-    <span class="sort-header" data-sort-by="nickname">Nickname</span>
-    <span class="sort-header" data-sort-by="fid">FID</span>
-    <span class="sort-header" data-sort-by="furnace_lv">Town Center</span>
-    <span class="sort-header" data-sort-by="kid">KID</span>
-    <span class="sort-header" data-sort-by="alliance">Alliance</span>
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+    <h1 style="margin: 0;">Alliance Members</h1>
+    <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+        <button id="refresh-avatars-btn" class="btn-primary" style="padding: 0.5rem 1rem; border-radius: 4px; border: none; cursor: pointer; background-color: var(--primary-color); color: white; font-size: 0.9rem;">
+            🔄 Refresh Avatars
+        </button>
+        <div class="sort-links">
+            <span><strong>Sort:</strong></span>
+            <a href="#" id="sort-tc-link" class="sort-link active">TC ↓</a>
+            <span>|</span>
+            <a href="#" id="sort-name-link" class="sort-link">A-Z</a>
+            <span>|</span>
+            <a href="#" id="sort-alliance-link" class="sort-link">Alliance</a>
+        </div>
+    </div>
+</div>
+<div id="refresh-status" style="display: none; padding: 1rem; margin-bottom: 1rem; border-radius: 4px; background-color: var(--surface-color); border: 1px solid var(--border-color);">
+    <div id="status-text" style="margin-bottom: 0.5rem; font-weight: 500;"></div>
+    <div class="progress-bar-container">
+        <div id="progress-bar" class="progress-bar-fill"></div>
+    </div>
+    <div id="progress-details" style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-color);"></div>
 </div>
 <div class="card-grid" id="members-grid">
     {% for user in users %}
     <div class="member-card" data-nickname="{{ user.nickname }}" data-fid="{{ user.fid }}" data-furnace_lv="{{ user.furnace_lv }}" data-kid="{{ user.kid }}" data-alliance="{{ alliance_nicknames.get(user.alliance, user.alliance) }}">
-        <h3>{{ user.nickname }}</h3>
-        <div class="card-details">
-            <p><strong>FID:</strong> {{ user.fid }}</p>
-            <p><strong>Town Center:</strong> {{ user.furnace_lv }}</p>
-        </div>
-        <div class="card-details">
-            <p><strong>KID:</strong> {{ user.kid }}</p>
-            <p><strong>Alliance:</strong> {{ alliance_nicknames.get(user.alliance, user.alliance) }}</p>
+        <div class="member-card-content">
+            {% if user.avatar_url %}
+            <img src="{{ user.avatar_url }}" alt="{{ user.nickname }}" class="member-avatar">
+            {% else %}
+            <div class="member-avatar-placeholder"></div>
+            {% endif %}
+            <div class="member-info">
+                <h3>{{ user.nickname }}</h3>
+                <div class="card-details">
+                    <p><strong>FID:</strong> {{ user.fid }}</p>
+                    <p><strong>Town Center:</strong> {{ user.furnace_lv }}</p>
+                </div>
+                <div class="card-details">
+                    <p><strong>KID:</strong> {{ user.kid }}</p>
+                    <p><strong>Alliance:</strong> {{ alliance_nicknames.get(user.alliance, user.alliance) }}</p>
+                </div>
+            </div>
         </div>
     </div>
     {% endfor %}
@@ -30,34 +54,119 @@
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    const headers = document.querySelectorAll('.sort-header');
     const grid = document.getElementById('members-grid');
-    const originalOrder = Array.from(grid.children);
+    const sortTcLink = document.getElementById('sort-tc-link');
+    const sortNameLink = document.getElementById('sort-name-link');
+    const sortAllianceLink = document.getElementById('sort-alliance-link');
+    const refreshBtn = document.getElementById('refresh-avatars-btn');
+    const refreshStatus = document.getElementById('refresh-status');
 
-    headers.forEach(header => {
-        header.addEventListener('click', () => {
-            const sortBy = header.dataset.sortBy;
-            let sortOrder = header.dataset.sortOrder || 'asc';
+    // Handle refresh avatars button
+    refreshBtn.addEventListener('click', () => {
+        refreshBtn.disabled = true;
+        refreshBtn.textContent = '⏳ Refreshing...';
+        refreshStatus.style.display = 'block';
+        refreshStatus.style.borderColor = 'var(--primary-color)';
 
-            if (sortOrder === 'asc') {
-                header.dataset.sortOrder = 'desc';
-            } else if (sortOrder === 'desc') {
-                header.dataset.sortOrder = 'original';
-            } else {
-                header.dataset.sortOrder = 'asc';
+        const statusText = document.getElementById('status-text');
+        const progressBar = document.getElementById('progress-bar');
+        const progressDetails = document.getElementById('progress-details');
+
+        statusText.textContent = 'Initializing...';
+        progressBar.style.width = '0%';
+        progressDetails.textContent = '';
+
+        // Use EventSource for Server-Sent Events
+        const eventSource = new EventSource('/api/refresh-avatars');
+
+        eventSource.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+
+            if (data.type === 'init') {
+                statusText.textContent = data.message;
+                progressBar.style.width = '0%';
+            } else if (data.type === 'status') {
+                statusText.textContent = data.message;
+            } else if (data.type === 'progress') {
+                statusText.textContent = data.message;
+                progressBar.style.width = `${data.percent}%`;
+                progressDetails.textContent = `Progress: ${data.current}/${data.total} | Updated: ${data.updated} | Skipped: ${data.skipped} | Errors: ${data.errors}`;
+            } else if (data.type === 'complete') {
+                eventSource.close();
+                statusText.textContent = '✅ ' + data.message;
+                progressBar.style.width = '100%';
+                progressBar.style.backgroundColor = 'var(--success-color)';
+                progressDetails.textContent = `Updated: ${data.updated} | Skipped: ${data.skipped} | Errors: ${data.errors}`;
+                refreshStatus.style.borderColor = 'var(--success-color)';
+
+                statusText.textContent += ' Reloading page...';
+
+                // Reload page after 2 seconds to show updated avatars
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+            } else if (data.type === 'error') {
+                eventSource.close();
+                statusText.textContent = '❌ Error: ' + data.message;
+                refreshStatus.style.borderColor = 'var(--error-color)';
+                progressBar.style.backgroundColor = 'var(--error-color)';
+                refreshBtn.disabled = false;
+                refreshBtn.textContent = '🔄 Refresh Avatars';
             }
+        };
 
-            sortCards(sortBy, header.dataset.sortOrder);
-        });
+        eventSource.onerror = (error) => {
+            eventSource.close();
+            statusText.textContent = '❌ Connection error occurred';
+            refreshStatus.style.borderColor = 'var(--error-color)';
+            progressBar.style.backgroundColor = 'var(--error-color)';
+            refreshBtn.disabled = false;
+            refreshBtn.textContent = '🔄 Refresh Avatars';
+        };
+    });
+
+    let tcSortAscending = false; // Default: TC high to low
+    let nameSortAscending = true; // Default: A-Z
+    let allianceSortAscending = true; // Default: A-Z
+
+    sortTcLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        tcSortAscending = !tcSortAscending;
+        sortTcLink.textContent = tcSortAscending ? 'TC ↑' : 'TC ↓';
+
+        sortTcLink.classList.add('active');
+        sortNameLink.classList.remove('active');
+        sortAllianceLink.classList.remove('active');
+
+        sortCards('furnace_lv', tcSortAscending ? 'asc' : 'desc');
+    });
+
+    sortNameLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        nameSortAscending = !nameSortAscending;
+        sortNameLink.textContent = nameSortAscending ? 'A-Z' : 'Z-A';
+
+        sortNameLink.classList.add('active');
+        sortTcLink.classList.remove('active');
+        sortAllianceLink.classList.remove('active');
+
+        sortCards('nickname', nameSortAscending ? 'asc' : 'desc');
+    });
+
+    sortAllianceLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        allianceSortAscending = !allianceSortAscending;
+        sortAllianceLink.textContent = allianceSortAscending ? 'Alliance A-Z' : 'Alliance Z-A';
+
+        sortAllianceLink.classList.add('active');
+        sortTcLink.classList.remove('active');
+        sortNameLink.classList.remove('active');
+
+        sortCards('alliance', allianceSortAscending ? 'asc' : 'desc');
     });
 
     function sortCards(sortBy, order) {
         const cards = Array.from(grid.children);
-
-        if (order === 'original') {
-            originalOrder.forEach(card => grid.appendChild(card));
-            return;
-        }
 
         cards.sort((a, b) => {
             let valA = a.dataset[sortBy];
@@ -66,6 +175,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!isNaN(valA) && !isNaN(valB)) {
                 valA = Number(valA);
                 valB = Number(valB);
+            } else {
+                valA = String(valA).toLowerCase();
+                valB = String(valB).toLowerCase();
             }
 
             if (valA < valB) {
@@ -79,6 +191,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         cards.forEach(card => grid.appendChild(card));
     }
+
+    // Initial sort by TC descending
+    sortCards('furnace_lv', 'desc');
 });
 </script>
 {% endblock %}

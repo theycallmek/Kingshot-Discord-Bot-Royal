@@ -6,13 +6,18 @@
 <h1>Log Viewer</h1>
 <div class="logs-container">
     <div class="log-section">
-        <h2>Town Center</h2>
-        <div class="sort-headers">
-            <span class="sort-header" data-sort-by="change_date" data-table="furnace-logs" data-col="0">Date</span>
-            <span class="sort-header" data-sort-by="fid" data-table="furnace-logs" data-col="1">FID</span>
-            <span class="sort-header" data-sort-by="nickname" data-table="furnace-logs" data-col="2">Nickname</span>
-            <span class="sort-header" data-sort-by="old_furnace_lv" data-table="furnace-logs" data-col="3">Old Value</span>
-            <span class="sort-header" data-sort-by="new_furnace_lv" data-table="furnace-logs" data-col="4">New Value</span>
+        <h2 style="margin: 0 0 0.5rem 0;">Town Center</h2>
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 0.25rem;">
+            <div class="sort-links">
+                <span><strong>Sort:</strong></span>
+                <a href="#" class="sort-link active tc-sort-date">Date ↓</a>
+                <span>|</span>
+                <a href="#" class="sort-link tc-sort-name">Name A-Z</a>
+                <span>|</span>
+                <a href="#" class="sort-link tc-sort-old">TC Old ↓</a>
+                <span>|</span>
+                <a href="#" class="sort-link tc-sort-new">TC New ↓</a>
+            </div>
         </div>
         <table id="furnace-logs">
             <tbody>
@@ -29,12 +34,16 @@
         </table>
     </div>
     <div class="log-section">
-        <h2>Nickname</h2>
-        <div class="sort-headers">
-            <span class="sort-header" data-sort-by="change_date" data-table="nickname-logs" data-col="0">Date</span>
-            <span class="sort-header" data-sort-by="fid" data-table="nickname-logs" data-col="1">FID</span>
-            <span class="sort-header" data-sort-by="old_nickname" data-table="nickname-logs" data-col="2">Old Value</span>
-            <span class="sort-header" data-sort-by="new_nickname" data-table="nickname-logs" data-col="3">New Value</span>
+        <h2 style="margin: 0 0 0.5rem 0;">Nickname</h2>
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 0.25rem;">
+            <div class="sort-links">
+                <span><strong>Sort:</strong></span>
+                <a href="#" class="sort-link active nick-sort-date">Date ↓</a>
+                <span>|</span>
+                <a href="#" class="sort-link nick-sort-old">Old A-Z</a>
+                <span>|</span>
+                <a href="#" class="sort-link nick-sort-new">New A-Z</a>
+            </div>
         </div>
         <table id="nickname-logs">
             <tbody>
@@ -54,68 +63,146 @@
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    const headers = document.querySelectorAll('.sort-header');
-    const originalOrders = {};
+    // Town Center Logs sorting
+    const tcSortDate = document.querySelector('.tc-sort-date');
+    const tcSortName = document.querySelector('.tc-sort-name');
+    const tcSortOld = document.querySelector('.tc-sort-old');
+    const tcSortNew = document.querySelector('.tc-sort-new');
+    const furnaceLogsTable = document.getElementById('furnace-logs');
 
-    // Store original order for each table
-    ['furnace-logs', 'nickname-logs'].forEach(tableId => {
-        const table = document.getElementById(tableId);
-        const tbody = table.querySelector('tbody');
-        originalOrders[tableId] = Array.from(tbody.rows);
+    let tcDateAsc = false; // Default: newest first
+    let tcNameAsc = true; // Default: A-Z
+    let tcOldAsc = false; // Default: highest to lowest
+    let tcNewAsc = false; // Default: highest to lowest
+
+    tcSortDate.addEventListener('click', (e) => {
+        e.preventDefault();
+        tcDateAsc = !tcDateAsc;
+        tcSortDate.textContent = tcDateAsc ? 'Date ↑' : 'Date ↓';
+
+        tcSortDate.classList.add('active');
+        tcSortName.classList.remove('active');
+        tcSortOld.classList.remove('active');
+        tcSortNew.classList.remove('active');
+
+        sortTable(furnaceLogsTable, 0, tcDateAsc ? 'asc' : 'desc', 'date');
     });
 
-    headers.forEach(header => {
-        header.addEventListener('click', () => {
-            const sortBy = header.dataset.sortBy;
-            const tableId = header.dataset.table;
-            const colIndex = parseInt(header.dataset.col);
-            let sortOrder = header.dataset.sortOrder || 'asc';
+    tcSortName.addEventListener('click', (e) => {
+        e.preventDefault();
+        tcNameAsc = !tcNameAsc;
+        tcSortName.textContent = tcNameAsc ? 'Name A-Z' : 'Name Z-A';
 
-            if (sortOrder === 'asc') {
-                header.dataset.sortOrder = 'desc';
-            } else if (sortOrder === 'desc') {
-                header.dataset.sortOrder = 'original';
-            } else {
-                header.dataset.sortOrder = 'asc';
-            }
+        tcSortName.classList.add('active');
+        tcSortDate.classList.remove('active');
+        tcSortOld.classList.remove('active');
+        tcSortNew.classList.remove('active');
 
-            sortRows(tableId, sortBy, header.dataset.sortOrder, colIndex);
-        });
+        sortTable(furnaceLogsTable, 2, tcNameAsc ? 'asc' : 'desc', 'text');
     });
 
-    function sortRows(tableId, sortBy, order, colIndex) {
-        const table = document.getElementById(tableId);
+    tcSortOld.addEventListener('click', (e) => {
+        e.preventDefault();
+        tcOldAsc = !tcOldAsc;
+        tcSortOld.textContent = tcOldAsc ? 'TC Old ↑' : 'TC Old ↓';
+
+        tcSortOld.classList.add('active');
+        tcSortDate.classList.remove('active');
+        tcSortName.classList.remove('active');
+        tcSortNew.classList.remove('active');
+
+        sortTable(furnaceLogsTable, 3, tcOldAsc ? 'asc' : 'desc', 'number');
+    });
+
+    tcSortNew.addEventListener('click', (e) => {
+        e.preventDefault();
+        tcNewAsc = !tcNewAsc;
+        tcSortNew.textContent = tcNewAsc ? 'TC New ↑' : 'TC New ↓';
+
+        tcSortNew.classList.add('active');
+        tcSortDate.classList.remove('active');
+        tcSortName.classList.remove('active');
+        tcSortOld.classList.remove('active');
+
+        sortTable(furnaceLogsTable, 4, tcNewAsc ? 'asc' : 'desc', 'number');
+    });
+
+    // Nickname Logs sorting
+    const nickSortDate = document.querySelector('.nick-sort-date');
+    const nickSortOld = document.querySelector('.nick-sort-old');
+    const nickSortNew = document.querySelector('.nick-sort-new');
+    const nicknameLogsTable = document.getElementById('nickname-logs');
+
+    let nickDateAsc = false; // Default: newest first
+    let nickOldAsc = true; // Default: A-Z
+    let nickNewAsc = true; // Default: A-Z
+
+    nickSortDate.addEventListener('click', (e) => {
+        e.preventDefault();
+        nickDateAsc = !nickDateAsc;
+        nickSortDate.textContent = nickDateAsc ? 'Date ↑' : 'Date ↓';
+
+        nickSortDate.classList.add('active');
+        nickSortOld.classList.remove('active');
+        nickSortNew.classList.remove('active');
+
+        sortTable(nicknameLogsTable, 0, nickDateAsc ? 'asc' : 'desc', 'date');
+    });
+
+    nickSortOld.addEventListener('click', (e) => {
+        e.preventDefault();
+        nickOldAsc = !nickOldAsc;
+        nickSortOld.textContent = nickOldAsc ? 'Old A-Z' : 'Old Z-A';
+
+        nickSortOld.classList.add('active');
+        nickSortDate.classList.remove('active');
+        nickSortNew.classList.remove('active');
+
+        sortTable(nicknameLogsTable, 2, nickOldAsc ? 'asc' : 'desc', 'text');
+    });
+
+    nickSortNew.addEventListener('click', (e) => {
+        e.preventDefault();
+        nickNewAsc = !nickNewAsc;
+        nickSortNew.textContent = nickNewAsc ? 'New A-Z' : 'New Z-A';
+
+        nickSortNew.classList.add('active');
+        nickSortDate.classList.remove('active');
+        nickSortOld.classList.remove('active');
+
+        sortTable(nicknameLogsTable, 3, nickNewAsc ? 'asc' : 'desc', 'text');
+    });
+
+    function sortTable(table, colIndex, order, type) {
         const tbody = table.querySelector('tbody');
         const rows = Array.from(tbody.rows);
-
-        if (order === 'original') {
-            originalOrders[tableId].forEach(row => tbody.appendChild(row));
-            return;
-        }
 
         rows.sort((a, b) => {
             let valA = a.cells[colIndex].textContent.trim();
             let valB = b.cells[colIndex].textContent.trim();
 
-            if (sortBy === 'change_date') {
+            if (type === 'date') {
                 valA = new Date(valA);
                 valB = new Date(valB);
-            } else if (!isNaN(valA) && !isNaN(valB)) {
+            } else if (type === 'number') {
                 valA = Number(valA);
                 valB = Number(valB);
+            } else {
+                valA = valA.toLowerCase();
+                valB = valB.toLowerCase();
             }
 
-            if (valA < valB) {
-                return order === 'asc' ? -1 : 1;
-            }
-            if (valA > valB) {
-                return order === 'asc' ? 1 : -1;
-            }
+            if (valA < valB) return order === 'asc' ? -1 : 1;
+            if (valA > valB) return order === 'asc' ? 1 : -1;
             return 0;
         });
 
         rows.forEach(row => tbody.appendChild(row));
     }
+
+    // Initial sort by date descending for both tables
+    sortTable(furnaceLogsTable, 0, 'desc', 'date');
+    sortTable(nicknameLogsTable, 0, 'desc', 'date');
 });
 </script>
 {% endblock %}

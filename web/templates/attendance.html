@@ -284,10 +284,560 @@
     body.light-mode .instructions {
         background-color: #f5f5f5;
     }
+
+    /* Processing status section */
+    .status-section {
+        margin-top: 2rem;
+        display: none;
+    }
+
+    .status-section.active {
+        display: block;
+    }
+
+    .status-box {
+        background-color: var(--background-color);
+        border-radius: 8px;
+        padding: 1.5rem;
+        border: 1px solid var(--border-color);
+    }
+
+    .status-header {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+    }
+
+    .status-spinner {
+        width: 24px;
+        height: 24px;
+        border: 3px solid var(--border-color);
+        border-top-color: var(--primary-color);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    .status-title {
+        font-size: 1.1rem;
+        font-weight: bold;
+        color: var(--header-color);
+    }
+
+    .status-message {
+        color: var(--text-color);
+        margin-bottom: 0.5rem;
+    }
+
+    .status-progress {
+        margin-top: 0.5rem;
+        font-size: 0.9rem;
+        color: var(--text-color);
+        opacity: 0.8;
+    }
+
+    .progress-bar-container {
+        margin-top: 1rem;
+        background-color: var(--surface-color);
+        border-radius: 8px;
+        height: 24px;
+        overflow: hidden;
+        border: 1px solid var(--border-color);
+    }
+
+    .progress-bar-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--primary-color), #00d4ff);
+        width: 0%;
+        transition: width 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .status-details {
+        margin-top: 1rem;
+        padding: 1rem;
+        background-color: var(--surface-color);
+        border-radius: 4px;
+        font-size: 0.9rem;
+        max-height: 200px;
+        overflow-y: auto;
+        border: 1px solid var(--border-color);
+    }
+
+    .status-detail-item {
+        padding: 0.35rem 0.5rem;
+        color: var(--text-color);
+        opacity: 0.95;
+        display: flex;
+        align-items: center;
+        border-radius: 4px;
+        margin-bottom: 0.25rem;
+        transition: background-color 0.2s ease;
+    }
+
+    .status-detail-item:hover {
+        background-color: rgba(0, 168, 255, 0.05);
+    }
+
+    .status-detail-item .status-icon {
+        font-size: 1.1rem;
+        margin-right: 0.75rem;
+        min-width: 24px;
+        text-align: center;
+    }
+
+    .status-detail-item.success {
+        color: #28a745;
+        background-color: rgba(40, 167, 69, 0.08);
+        font-weight: 500;
+    }
+
+    .status-detail-item.processing {
+        color: var(--primary-color);
+        background-color: rgba(0, 168, 255, 0.08);
+    }
+
+    .status-detail-item.error {
+        color: #dc3545;
+        background-color: rgba(220, 53, 69, 0.08);
+        font-weight: 500;
+    }
+
+    .status-detail-item.info {
+        color: #7c3aed;
+        background-color: rgba(124, 58, 237, 0.08);
+    }
+
+    .status-detail-item.warning {
+        color: #f59e0b;
+        background-color: rgba(245, 158, 11, 0.08);
+    }
+
+    body.light-mode .status-detail-item.success {
+        background-color: rgba(40, 167, 69, 0.12);
+    }
+
+    body.light-mode .status-detail-item.processing {
+        background-color: rgba(0, 168, 255, 0.12);
+    }
+
+    body.light-mode .status-detail-item.error {
+        background-color: rgba(220, 53, 69, 0.12);
+    }
+
+    body.light-mode .status-detail-item.info {
+        background-color: rgba(124, 58, 237, 0.12);
+    }
+
+    body.light-mode .status-detail-item.warning {
+        background-color: rgba(245, 158, 11, 0.12);
+    }
+
+    body.light-mode .progress-bar-container,
+    body.light-mode .status-details {
+        background-color: #e9ecef;
+    }
+
+    /* Results section */
+    .results-section {
+        margin-top: 2rem;
+        display: none;
+    }
+
+    .results-section.active {
+        display: block;
+    }
+
+    .results-summary {
+        background-color: var(--surface-color);
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        border: 1px solid var(--border-color);
+    }
+
+    .results-summary h3 {
+        margin-top: 0;
+        color: var(--header-color);
+        margin-bottom: 1rem;
+    }
+
+    .summary-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+
+    .stat-item {
+        background-color: var(--background-color);
+        padding: 1rem;
+        border-radius: 4px;
+        text-align: center;
+        border: 1px solid var(--border-color);
+    }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: bold;
+        color: var(--primary-color);
+        margin-bottom: 0.25rem;
+    }
+
+    .stat-label {
+        font-size: 0.9rem;
+        color: var(--text-color);
+        opacity: 0.8;
+    }
+
+    .results-table-container {
+        background-color: var(--surface-color);
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        border: 1px solid var(--border-color);
+    }
+
+    .results-table-container h3 {
+        margin-top: 0;
+        color: var(--header-color);
+        margin-bottom: 1rem;
+    }
+
+    .results-table {
+        width: 100%;
+        border-collapse: collapse;
+        background-color: var(--background-color);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .results-table thead {
+        background-color: var(--surface-color);
+    }
+
+    .results-table th {
+        padding: 0.75rem;
+        text-align: left;
+        color: var(--header-color);
+        font-weight: 600;
+        border-bottom: 2px solid var(--border-color);
+    }
+
+    .results-table td {
+        padding: 0.75rem;
+        color: var(--text-color);
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .results-table tbody tr:hover {
+        background-color: var(--surface-color);
+    }
+
+    .results-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .confidence-badge {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+
+    .confidence-high {
+        background-color: rgba(40, 167, 69, 0.2);
+        color: #28a745;
+    }
+
+    .confidence-medium {
+        background-color: rgba(255, 193, 7, 0.2);
+        color: #ffc107;
+    }
+
+    .confidence-low {
+        background-color: rgba(220, 53, 69, 0.2);
+        color: #dc3545;
+    }
+
+    .no-results {
+        text-align: center;
+        padding: 2rem;
+        color: var(--text-color);
+        opacity: 0.7;
+    }
+
+    body.light-mode .status-box,
+    body.light-mode .results-summary,
+    body.light-mode .results-table-container {
+        background-color: #f5f5f5;
+    }
+
+    body.light-mode .stat-item,
+    body.light-mode .results-table {
+        background-color: #ffffff;
+    }
+
+    body.light-mode .results-table thead {
+        background-color: #f5f5f5;
+    }
+
+    /* Tab Navigation Styles */
+    .tabs-container {
+        max-width: 1400px;
+        margin: 2rem auto;
+    }
+
+    .tabs-nav {
+        display: flex;
+        gap: 0.5rem;
+        border-bottom: 2px solid var(--border-color);
+        margin-bottom: 2rem;
+    }
+
+    .tab-button {
+        padding: 1rem 2rem;
+        background: none;
+        border: none;
+        border-bottom: 3px solid transparent;
+        color: var(--text-color);
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 1.1rem;
+        font-weight: 500;
+    }
+
+    .tab-button:hover {
+        background-color: var(--surface-color);
+    }
+
+    .tab-button.active {
+        color: var(--primary-color);
+        border-bottom-color: var(--primary-color);
+    }
+
+    .tab-content {
+        display: none;
+    }
+
+    .tab-content.active {
+        display: block;
+    }
+
+    /* Dashboard Styles */
+    .dashboard-grid {
+        display: grid;
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .dashboard-card {
+        background-color: var(--surface-color);
+        border-radius: 8px;
+        padding: 1.5rem;
+        border: 1px solid var(--border-color);
+    }
+
+    .dashboard-card h2 {
+        margin-top: 0;
+        margin-bottom: 1rem;
+        color: var(--header-color);
+        font-size: 1.3rem;
+    }
+
+    .dashboard-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .dashboard-stat-card {
+        background-color: var(--background-color);
+        border-radius: 8px;
+        padding: 1.5rem;
+        border: 1px solid var(--border-color);
+        text-align: center;
+    }
+
+    .dashboard-stat-value {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: var(--primary-color);
+        margin-bottom: 0.5rem;
+    }
+
+    .dashboard-stat-label {
+        font-size: 0.9rem;
+        color: var(--text-color);
+        opacity: 0.8;
+    }
+
+    .verification-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+
+    .verification-high {
+        background-color: rgba(40, 167, 69, 0.15);
+        color: #28a745;
+    }
+
+    .verification-medium {
+        background-color: rgba(255, 193, 7, 0.15);
+        color: #ffc107;
+    }
+
+    .verification-low {
+        background-color: rgba(220, 53, 69, 0.15);
+        color: #dc3545;
+    }
+
+    .verification-bar {
+        display: inline-block;
+        width: 60px;
+        height: 8px;
+        background-color: var(--border-color);
+        border-radius: 4px;
+        overflow: hidden;
+        margin-left: 0.5rem;
+    }
+
+    .verification-bar-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--primary-color), #28a745);
+        transition: width 0.3s ease;
+    }
+
+    body.light-mode .dashboard-card {
+        background-color: #f5f5f5;
+    }
+
+    body.light-mode .dashboard-stat-card {
+        background-color: #ffffff;
+    }
+
+    /* Mobile responsive - only change text size and padding, keep exact same layout */
+    @media (max-width: 768px) {
+        /* Override global mobile table styles to keep horizontal layout */
+        .results-table,
+        .results-table thead,
+        .results-table tbody,
+        .results-table th,
+        .results-table td,
+        .results-table tr {
+            display: table;
+        }
+
+        .results-table thead {
+            display: table-header-group;
+        }
+
+        .results-table tbody {
+            display: table-row-group;
+        }
+
+        .results-table tr {
+            display: table-row;
+            margin-bottom: 0;
+            border: none;
+            border-radius: 0;
+            padding: 0;
+        }
+
+        .results-table th,
+        .results-table td {
+            display: table-cell;
+        }
+
+        .results-table thead tr {
+            position: static;
+            top: auto;
+            left: auto;
+        }
+
+        .results-table td {
+            padding-left: 0.3rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .results-table td:before {
+            content: none;
+        }
+
+        /* Only change font size and padding */
+        .results-table th {
+            font-size: 0.7rem;
+            padding: 0.4rem 0.3rem;
+        }
+
+        .results-table td {
+            font-size: 0.75rem;
+            padding: 0.4rem 0.3rem;
+        }
+
+        .results-table td strong {
+            font-size: 0.75rem;
+        }
+    }
 </style>
 
-<h1>Event Attendance</h1>
 
+<div class="tabs-container">
+    <h1>Event Attendance</h1>
+
+    <div class="tabs-nav">
+        <button class="tab-button active" data-tab="dashboard">
+            📊 Events Data
+        </button>
+        <button class="tab-button" data-tab="upload">
+            📤 Upload
+        </button>
+    </div>
+
+    <!-- Dashboard Tab (Default View) -->
+    <div class="tab-content active" id="dashboard-tab">
+        <div class="dashboard-grid">
+            <div class="dashboard-card">
+                <h2>📈 Recent Events</h2>
+                <div id="recentEventsContainer">
+                    <!-- Will be populated by JavaScript -->
+                </div>
+            </div>
+
+            <div class="dashboard-card">
+                <h2>👥 Top Players</h2>
+                <div id="topPlayersContainer">
+                    <!-- Will be populated by JavaScript -->
+                </div>
+            </div>
+
+            <div class="dashboard-card">
+                <h2>✅ Data Verification Status</h2>
+                <div id="verificationContainer">
+                    <!-- Will be populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload Tab -->
+    <div class="tab-content" id="upload-tab">
 <div class="upload-container">
     <div class="instructions">
         <h3>📋 How to Upload</h3>
@@ -319,9 +869,93 @@
         <button class="btn btn-secondary" id="clearAllBtn" style="display: none;">Clear All</button>
         <button class="btn btn-primary" id="processBtn" disabled>Process Attendance</button>
     </div>
+
+    <!-- Processing Status Section -->
+    <div class="status-section" id="statusSection">
+        <div class="status-box">
+            <div class="status-header">
+                <div class="status-spinner"></div>
+                <div class="status-title">Processing Screenshots...</div>
+            </div>
+            <div class="status-message" id="statusMessage">Initializing OCR system...</div>
+            <div class="progress-bar-container">
+                <div class="progress-bar-fill" id="progressBarFill">0%</div>
+            </div>
+            <div class="status-progress" id="statusProgress"></div>
+            <div class="status-details" id="statusDetails"></div>
+        </div>
+    </div>
+
+    <!-- Results Section -->
+    <div class="results-section" id="resultsSection">
+        <div class="results-summary">
+            <h3>Processing Summary</h3>
+            <div class="summary-stats">
+                <div class="stat-item">
+                    <div class="stat-value" id="statImages">0</div>
+                    <div class="stat-label">Images Processed</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="statDetected">0</div>
+                    <div class="stat-label">Players Detected</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="statMatched">0</div>
+                    <div class="stat-label">Players Matched</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="statAttendance">0</div>
+                    <div class="stat-label">Attendance Marked</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Matched Players Table -->
+        <div class="results-table-container" id="matchedContainer">
+            <h3>Matched Players (Attendance Marked)</h3>
+            <table class="results-table" id="matchedTable">
+                <thead>
+                    <tr>
+                        <th>Player Name</th>
+                        <th>FID</th>
+                        <th>Rank</th>
+                        <th>Damage Points</th>
+                        <th>Confidence</th>
+                    </tr>
+                </thead>
+                <tbody id="matchedTableBody">
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Unmatched Players Table -->
+        <div class="results-table-container" id="unmatchedContainer">
+            <h3>Ghost Players (Not in Users Database)</h3>
+            <p style="color: var(--text-color); opacity: 0.8; margin-top: 0; font-size: 0.9rem;">
+                These players are tracked in web_cache.sqlite and won't affect the Discord bot.
+            </p>
+            <table class="results-table" id="unmatchedTable">
+                <thead>
+                    <tr>
+                        <th>Player Name</th>
+                        <th>FID</th>
+                        <th>Rank</th>
+                        <th>Damage Points</th>
+                        <th>Confidence</th>
+                        <th>Image Source</th>
+                    </tr>
+                </thead>
+                <tbody id="unmatchedTableBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
 
 <!-- Modal for full-size image preview -->
+    </div>
+</div>
+
 <div class="modal" id="imageModal">
     <button class="modal-close" id="modalClose">×</button>
     <img class="modal-content" id="modalImage" alt="Full size preview" />
@@ -499,12 +1133,392 @@
         }
     });
 
-    // Process button (placeholder for now)
-    processBtn.addEventListener('click', () => {
+    // Process button - Call OCR API
+    processBtn.addEventListener('click', async () => {
         if (selectedFiles.length === 0) return;
 
-        // TODO: Implement OCR processing
-        alert(`Ready to process ${selectedFiles.length} image${selectedFiles.length !== 1 ? 's' : ''} for attendance tracking.`);
+        // Show status section
+        const statusSection = document.getElementById('statusSection');
+        const resultsSection = document.getElementById('resultsSection');
+        const statusMessage = document.getElementById('statusMessage');
+        const statusProgress = document.getElementById('statusProgress');
+        const progressBarFill = document.getElementById('progressBarFill');
+        const statusDetails = document.getElementById('statusDetails');
+
+        statusSection.classList.add('active');
+        resultsSection.classList.remove('active');
+        statusDetails.innerHTML = '';
+
+        // Disable process button
+        processBtn.disabled = true;
+        processBtn.textContent = 'Processing...';
+
+        // Helper to add status detail
+        function addStatusDetail(message, type = 'processing', emoji = null) {
+            const item = document.createElement('div');
+            item.className = `status-detail-item ${type}`;
+
+            // Default emojis by type
+            const defaultEmojis = {
+                'success': '✅',
+                'processing': '⚙️',
+                'error': '❌',
+                'info': '📋',
+                'warning': '⚠️'
+            };
+
+            const icon = emoji || defaultEmojis[type] || '●';
+            item.innerHTML = `<span class="status-icon">${icon}</span><span>${message}</span>`;
+            statusDetails.appendChild(item);
+            statusDetails.scrollTop = statusDetails.scrollHeight;
+        }
+
+        // Helper to update progress
+        function updateProgress(percent, message) {
+            progressBarFill.style.width = `${percent}%`;
+            progressBarFill.textContent = `${percent}%`;
+            statusMessage.textContent = message;
+        }
+
+        try {
+            // Step 1: Preparing
+            updateProgress(5, '📦 Preparing files for upload...');
+            addStatusDetail(`Found ${selectedFiles.length} screenshot${selectedFiles.length !== 1 ? 's' : ''} to process`, 'info', '🔍');
+
+            // Prepare form data
+            const formData = new FormData();
+            selectedFiles.forEach(file => {
+                formData.append('files', file);
+                addStatusDetail(`${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`, 'info', '📸');
+            });
+            formData.append('event_name', 'Bear Trap');
+            formData.append('event_type', 'Bear Trap');
+
+            await new Promise(resolve => setTimeout(resolve, 300));
+
+            // Step 2: Uploading
+            updateProgress(15, '☁️ Uploading images to server...');
+            statusProgress.textContent = 'This may take a moment...';
+            addStatusDetail('Sending files to server...', 'processing', '🚀');
+
+            // Send to API
+            const uploadStart = Date.now();
+            const response = await fetch('/api/process-attendance', {
+                method: 'POST',
+                body: formData
+            });
+
+            const uploadTime = ((Date.now() - uploadStart) / 1000).toFixed(1);
+            addStatusDetail(`Upload complete in ${uploadTime}s`, 'success', '✨');
+
+            // Step 3: Processing
+            updateProgress(30, '🤖 Initializing OCR engine...');
+            addStatusDetail('Loading EasyOCR model...', 'processing', '🧠');
+            await new Promise(resolve => setTimeout(resolve, 200));
+
+            updateProgress(40, '🔎 Processing images with OCR...');
+            addStatusDetail('Extracting text from screenshots...', 'processing', '📖');
+            statusProgress.textContent = 'Reading player names, rankings, and scores...';
+            await new Promise(resolve => setTimeout(resolve, 300));
+
+            const result = await response.json();
+
+            if (!response.ok || result.error) {
+                throw new Error(result.error || `Server error: ${response.status}`);
+            }
+
+            // Step 4: Matching
+            updateProgress(60, '🎯 Matching players against database...');
+            addStatusDetail(`Detected ${result.summary.players_detected} player${result.summary.players_detected !== 1 ? 's' : ''}`, 'success', '👥');
+            await new Promise(resolve => setTimeout(resolve, 200));
+
+            addStatusDetail(`Matched ${result.summary.players_matched} player${result.summary.players_matched !== 1 ? 's' : ''} in users database`, 'success', '🎮');
+
+            const ghostCount = result.summary.players_detected - result.summary.players_matched;
+            if (ghostCount > 0) {
+                addStatusDetail(`Created/updated ${ghostCount} ghost player profile${ghostCount !== 1 ? 's' : ''}`, 'warning', '👻');
+            }
+            await new Promise(resolve => setTimeout(resolve, 200));
+
+            // Step 5: Attendance
+            updateProgress(80, '📝 Marking attendance records...');
+            addStatusDetail('Storing attendance data...', 'processing', '💾');
+            await new Promise(resolve => setTimeout(resolve, 200));
+
+            addStatusDetail(`Marked ${result.summary.attendance_marked} attendance record${result.summary.attendance_marked !== 1 ? 's' : ''}`, 'success', '📊');
+
+            // Step 6: Complete
+            updateProgress(100, '🎉 Processing complete!');
+            statusProgress.textContent = 'All data saved successfully';
+            addStatusDetail('Ready to display results!', 'success', '🏆');
+
+            // Hide status, show results
+            setTimeout(() => {
+                statusSection.classList.remove('active');
+                displayResults(result);
+
+                // Clear uploaded files
+                selectedFiles = [];
+                updateGallery();
+
+                // Re-enable button
+                processBtn.disabled = true;
+                processBtn.textContent = 'Process Attendance';
+            }, 1000);
+
+        } catch (error) {
+            console.error('Error processing attendance:', error);
+            updateProgress(0, '💥 Error processing images');
+            statusProgress.textContent = error.message;
+            addStatusDetail(`${error.message}`, 'error', '❌');
+            addStatusDetail('Please check your images and try again', 'warning', '⚠️');
+
+            // Re-enable button after error
+            setTimeout(() => {
+                statusSection.classList.remove('active');
+                processBtn.disabled = false;
+                processBtn.textContent = 'Process Attendance';
+                alert('❌ Failed to process images. Please try again.');
+            }, 3000);
+        }
     });
+
+    // Display results
+    function displayResults(result) {
+        const resultsSection = document.getElementById('resultsSection');
+
+        // Update summary stats
+        document.getElementById('statImages').textContent = result.summary.images_processed;
+        document.getElementById('statDetected').textContent = result.summary.players_detected;
+        document.getElementById('statMatched').textContent = result.summary.players_matched;
+        document.getElementById('statAttendance').textContent = result.summary.attendance_marked;
+
+        // Display matched players
+        const matchedContainer = document.getElementById('matchedContainer');
+        const matchedTableBody = document.getElementById('matchedTableBody');
+        matchedTableBody.innerHTML = '';
+
+        if (result.matched_players && result.matched_players.length > 0) {
+            matchedContainer.style.display = 'block';
+            result.matched_players.forEach(player => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${player.player_name}</td>
+                    <td>${player.player_fid}</td>
+                    <td>${player.ranking || 'N/A'}</td>
+                    <td>${player.damage_points ? player.damage_points.toLocaleString() : 'N/A'}</td>
+                    <td>${getConfidenceBadge(player.confidence)}</td>
+                `;
+                matchedTableBody.appendChild(row);
+            });
+        } else {
+            matchedContainer.style.display = 'none';
+        }
+
+        // Display unmatched players
+        const unmatchedContainer = document.getElementById('unmatchedContainer');
+        const unmatchedTableBody = document.getElementById('unmatchedTableBody');
+        unmatchedTableBody.innerHTML = '';
+
+        if (result.unmatched_players && result.unmatched_players.length > 0) {
+            unmatchedContainer.style.display = 'block';
+            result.unmatched_players.forEach(player => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${player.player_name}</td>
+                    <td><span style="color: var(--text-color); opacity: 0.6;" title="Ghost Player - Not in users database">${player.player_fid}</span></td>
+                    <td>${player.ranking || 'N/A'}</td>
+                    <td>${player.damage_points ? player.damage_points.toLocaleString() : 'N/A'}</td>
+                    <td>${getConfidenceBadge(player.confidence)}</td>
+                    <td>${player.image_source}</td>
+                `;
+                unmatchedTableBody.appendChild(row);
+            });
+        } else {
+            unmatchedContainer.style.display = 'none';
+        }
+
+        // Show results section
+        resultsSection.classList.add('active');
+
+        // Scroll to results
+        setTimeout(() => {
+            resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+    }
+
+    // Get confidence badge HTML
+    function getConfidenceBadge(confidence) {
+        const percentage = Math.round(confidence * 100);
+        let className = 'confidence-low';
+
+        if (percentage >= 80) {
+            className = 'confidence-high';
+        } else if (percentage >= 60) {
+            className = 'confidence-medium';
+        }
+
+        return `<span class="confidence-badge ${className}">${percentage}%</span>`;
+    }
+
+    // ========================================
+    // Tab Switching Logic
+    // ========================================
+    document.querySelectorAll('.tab-button').forEach(button => {
+        button.addEventListener('click', () => {
+            const tabName = button.dataset.tab;
+
+            // Update buttons
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            button.classList.add('active');
+
+            // Update content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+
+            // Load dashboard data when switching to dashboard tab
+            if (tabName === 'dashboard') {
+                loadDashboardData();
+            }
+        });
+    });
+
+    // ========================================
+    // Dashboard Data Loading
+    // ========================================
+    async function loadDashboardData() {
+        console.log('Loading dashboard data...');
+
+        const recentEventsContainer = document.getElementById('recentEventsContainer');
+        const topPlayersContainer = document.getElementById('topPlayersContainer');
+        const verificationContainer = document.getElementById('verificationContainer');
+
+        // Show loading state
+        recentEventsContainer.innerHTML = '<p style="color: var(--text-color); opacity: 0.6; text-align: center; padding: 1rem;">Loading...</p>';
+        topPlayersContainer.innerHTML = '<p style="color: var(--text-color); opacity: 0.6; text-align: center; padding: 1rem;">Loading...</p>';
+        verificationContainer.innerHTML = '<p style="color: var(--text-color); opacity: 0.6; text-align: center; padding: 1rem;">Loading...</p>';
+
+        try {
+            // Fetch dashboard data from API
+            const response = await fetch('/api/dashboard-data');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+
+            if (!data.success) {
+                throw new Error(data.error || 'Failed to load dashboard data');
+            }
+
+            // Populate Recent Events
+            if (data.recent_events && data.recent_events.length > 0) {
+                let eventsHTML = '<div style="overflow-x: auto;"><table class="results-table" style="min-width: 100%;"><thead><tr>';
+                eventsHTML += '<th>Event Name</th><th>Date</th><th>Players</th><th>Verified</th><th>Avg Verifications</th></tr></thead><tbody>';
+
+                data.recent_events.forEach(event => {
+                    const eventDate = new Date(event.event_date).toLocaleDateString();
+                    const avgVerif = event.player_count > 0 ? (event.total_verifications / event.player_count).toFixed(1) : '0.0';
+                    eventsHTML += `
+                        <tr>
+                            <td><strong>${event.event_name}</strong></td>
+                            <td>${eventDate}</td>
+                            <td>${event.player_count}</td>
+                            <td>${event.verified_count}</td>
+                            <td>${avgVerif}x</td>
+                        </tr>
+                    `;
+                });
+
+                eventsHTML += '</tbody></table></div>';
+                recentEventsContainer.innerHTML = eventsHTML;
+            } else {
+                recentEventsContainer.innerHTML = '<p style="color: var(--text-color); opacity: 0.6; text-align: center; padding: 2rem;">No recent events found. Upload screenshots to get started!</p>';
+            }
+
+            // Populate Top Players
+            if (data.top_players && data.top_players.length > 0) {
+                let playersHTML = '<div style="overflow-x: auto;"><table class="results-table" style="min-width: 100%;"><thead><tr>';
+                playersHTML += '<th>Player Name</th><th>Total Damage</th><th>Events</th><th>Best Rank</th><th>Avg Verif</th></tr></thead><tbody>';
+
+                data.top_players.forEach(player => {
+                    const isMatched = player.player_fid !== "0000000000";
+                    const nameDisplay = isMatched ? player.player_name : `${player.player_name} 👻`;
+                    const bestRank = player.best_rank ? `#${player.best_rank}` : 'N/A';
+                    playersHTML += `
+                        <tr>
+                            <td><strong>${nameDisplay}</strong></td>
+                            <td>${player.total_damage.toLocaleString()}</td>
+                            <td>${player.event_count}</td>
+                            <td>${bestRank}</td>
+                            <td>${player.avg_verification.toFixed(1)}x</td>
+                        </tr>
+                    `;
+                });
+
+                playersHTML += '</tbody></table></div>';
+                topPlayersContainer.innerHTML = playersHTML;
+            } else {
+                topPlayersContainer.innerHTML = '<p style="color: var(--text-color); opacity: 0.6; text-align: center; padding: 2rem;">No player data available yet.</p>';
+            }
+
+            // Populate Verification Stats
+            const stats = data.verification_stats;
+            const totalRecords = stats.total_records || 0;
+            const highPct = totalRecords > 0 ? ((stats.high_confidence / totalRecords) * 100).toFixed(1) : 0;
+            const medPct = totalRecords > 0 ? ((stats.medium_confidence / totalRecords) * 100).toFixed(1) : 0;
+            const lowPct = totalRecords > 0 ? ((stats.low_confidence / totalRecords) * 100).toFixed(1) : 0;
+
+            let verificationHTML = `
+                <div class="summary-stats" style="margin-bottom: 1.5rem;">
+                    <div class="stat-item">
+                        <div class="stat-value" style="color: #28a745;">${stats.high_confidence}</div>
+                        <div class="stat-label">High Confidence (3+)</div>
+                        <div style="font-size: 0.85rem; color: var(--text-color); opacity: 0.7; margin-top: 0.25rem;">${highPct}%</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" style="color: #ffc107;">${stats.medium_confidence}</div>
+                        <div class="stat-label">Medium Confidence (2)</div>
+                        <div style="font-size: 0.85rem; color: var(--text-color); opacity: 0.7; margin-top: 0.25rem;">${medPct}%</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" style="color: #dc3545;">${stats.low_confidence}</div>
+                        <div class="stat-label">Low Confidence (1)</div>
+                        <div style="font-size: 0.85rem; color: var(--text-color); opacity: 0.7; margin-top: 0.25rem;">${lowPct}%</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">${totalRecords}</div>
+                        <div class="stat-label">Total Records</div>
+                        <div style="font-size: 0.85rem; color: var(--text-color); opacity: 0.7; margin-top: 0.25rem;">Avg: ${stats.avg_confidence.toFixed(2)}x</div>
+                    </div>
+                </div>
+                <p style="color: var(--text-color); opacity: 0.8; font-size: 0.9rem; text-align: center; margin-top: 1rem;">
+                    High confidence records have been verified by 3+ independent sources, making them highly reliable.
+                </p>
+            `;
+
+            if (totalRecords === 0) {
+                verificationHTML = '<p style="color: var(--text-color); opacity: 0.6; text-align: center; padding: 2rem;">No verification data available yet. Upload screenshots to start tracking!</p>';
+            }
+
+            verificationContainer.innerHTML = verificationHTML;
+
+        } catch (error) {
+            console.error('Error loading dashboard data:', error);
+            const errorMsg = `<p style="color: #dc3545; text-align: center; padding: 2rem;">Error loading dashboard data: ${error.message}</p>`;
+            recentEventsContainer.innerHTML = errorMsg;
+            topPlayersContainer.innerHTML = errorMsg;
+            verificationContainer.innerHTML = errorMsg;
+        }
+    }
+
+    // Load dashboard data on page load (since dashboard is default tab)
+    document.addEventListener('DOMContentLoaded', () => {
+        loadDashboardData();
+    });
+
 </script>
 {% endblock %}
