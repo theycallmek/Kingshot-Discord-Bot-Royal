@@ -100,3 +100,6 @@ venv.bak/
 
 # Secrets
 *token.txt
+
+# Temp
+/web/temp/

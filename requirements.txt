@@ -1,3 +1,6 @@
+paddleocr
+keras-ocr
+easyocr
 sqlmodel
 rapidfuzz
 discord.py>=2.0.0
