@@ -824,6 +824,74 @@ async def get_dashboard_data(authenticated: bool = Depends(is_authenticated)):
         return JSONResponse({"error": str(e)}, status_code=500)
 
 
+@app.get("/api/event-details/{session_id}")
+async def get_event_details(session_id: str, authenticated: bool = Depends(is_authenticated),
+                             cache_session: Session = Depends(get_cache_session),
+                             users_session: Session = Depends(get_users_session)):
+    """Get detailed player data for a specific event processing session"""
+    if not authenticated:
+        return JSONResponse({"error": "Not authenticated"}, status_code=401)
+
+    try:
+        # Get all event data for the given session
+        event_data_query = select(OCREventData).where(OCREventData.processing_session == session_id)
+        event_players = cache_session.exec(event_data_query).all()
+
+        if not event_players:
+            return JSONResponse({"error": "Event session not found"}, status_code=404)
+
+        # Get all users for nickname mapping
+        users = users_session.exec(select(User)).all()
+        user_map = {user.fid: user.nickname for user in users}
+
+        # Prepare player details
+        players_details = []
+        for player in event_players:
+            is_matched = player.player_fid and player.player_fid != "0000000000"
+            nickname = "N/A"
+            if is_matched:
+                # FID is stored as an integer in User model, but string in OCREventData
+                try:
+                    nickname = user_map.get(int(player.player_fid), "Unknown")
+                except (ValueError, TypeError):
+                    nickname = "Invalid FID"
+
+            players_details.append({
+                "player_name": player.player_name,
+                "player_fid": player.player_fid,
+                "is_matched": is_matched,
+                "nickname": nickname,
+                "ranking": player.ranking,
+                "damage_points": player.damage_points,
+                "ocr_confidence": round(player.ocr_confidence * 100, 1),
+                "verification_count": player.verification_count,
+                "image_source": player.image_source,
+            })
+
+        # Sort players by ranking if available, otherwise by damage
+        players_details.sort(key=lambda p: (p['ranking'] is None, p['ranking'], -p.get('damage_points', 0)))
+
+
+        # Get event metadata from the first player record
+        first_player = event_players[0]
+        event_info = {
+            "session_id": first_player.processing_session,
+            "event_name": first_player.event_name,
+            "event_date": first_player.event_date.isoformat(),
+            "player_count": len(players_details)
+        }
+
+        return JSONResponse({
+            "success": True,
+            "event_info": event_info,
+            "players": players_details
+        })
+
+    except Exception as e:
+        import traceback
+        return JSONResponse({"error": str(e), "trace": traceback.format_exc()}, status_code=500)
+
+
 @app.get("/api/refresh-avatars")
 async def refresh_avatars(authenticated: bool = Depends(is_authenticated)):
     """Stream progress updates while fetching and caching avatar URLs for all users"""
