@@ -943,28 +943,58 @@ def preprocess_image_for_ocr(image_path):
     """
     Preprocess image using adaptive thresholding for improved OCR accuracy.
     This method significantly improves damage point detection (+40% improvement).
+    It reads the image into memory to handle non-ASCII file paths correctly.
 
     Args:
         image_path: Path to the image file
 
     Returns:
         Path to the preprocessed image
+
+    Raises:
+        FileNotFoundError: If the image file doesn't exist
+        ValueError: If the image couldn't be processed
     """
-    # Read image
-    image = cv2.imread(str(image_path))
+    # Check if file exists
+    if not os.path.exists(image_path):
+        raise FileNotFoundError(f"Image file not found: {image_path}")
 
-    # Convert to grayscale
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    try:
+        # Read the file into a numpy array to handle non-ASCII paths
+        with open(image_path, 'rb') as f:
+            file_bytes = np.frombuffer(f.read(), dtype=np.uint8)
+        
+        # Decode the image from the numpy array
+        image = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
 
-    # Apply adaptive thresholding for high contrast text
-    thresh = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                                   cv2.THRESH_BINARY, 11, 2)
+        # Check if image was successfully loaded
+        if image is None:
+            raise ValueError(f"Could not decode image from path: {image_path}")
 
-    # Convert back to BGR for PaddleOCR compatibility
-    result = cv2.cvtColor(thresh, cv2.COLOR_GRAY2BGR)
+        # Convert to grayscale
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-    # Save preprocessed image (overwrite original in temp location)
-    cv2.imwrite(str(image_path), result)
+        # Apply adaptive thresholding for high contrast text
+        thresh = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                       cv2.THRESH_BINARY, 11, 2)
+
+        # Convert back to BGR for PaddleOCR compatibility
+        result = cv2.cvtColor(thresh, cv2.COLOR_GRAY2BGR)
+
+        # Encode the processed image to a buffer
+        # Use .png for lossless compression to preserve OCR quality
+        ext = os.path.splitext(image_path)[1] or '.png'
+        is_success, buffer = cv2.imencode(ext, result)
+        if not is_success:
+            raise ValueError(f"Could not encode preprocessed image: {image_path}")
+
+        # Write the buffer back to the original file path
+        with open(image_path, 'wb') as f:
+            f.write(buffer)
+
+    except Exception as e:
+        # Re-raise exceptions with more context
+        raise ValueError(f"Failed to preprocess image at {image_path}: {e}") from e
 
     return image_path
 
@@ -1694,7 +1724,7 @@ async def read_logs(request: Request, authenticated: bool = Depends(is_authentic
     furnace_changes = changes_session.exec(select(FurnaceChange)).all()
 
     try:
-        nickname_changes.sort(key=lambda x: datetime.fromisoformat(x.change_date), reverse=True)
+        nickname_changes.sort(key=lambda x: datetime.fromisoformat(x.change_date), reverse=_True)
         furnace_changes.sort(key=lambda x: datetime.fromisoformat(x.change_date), reverse=True)
     except (ValueError, TypeError):
         pass

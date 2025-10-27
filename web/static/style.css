@@ -851,7 +851,6 @@ body.light-mode #tcLevelHeatmap {
     /* Dashboard charts on Mobile */
     .dashboard-section {
         padding: 0;
-        margin-bottom: 1rem;
         margin-left: 3px;
         margin-right: 5px;
         border: none;
@@ -865,14 +864,15 @@ body.light-mode #tcLevelHeatmap {
     }
 
     /* Make charts fill full width on mobile */
-    #allianceProgressChart,
-    #allianceAverageChart,
-    #furnaceDistributionChart,
-    #tcLevelHeatmap {
-        margin: 0 !important;
-        padding: 0 !important;
-        width: 100% !important;
-        min-height: 400px !important;
+    /* Use a more specific selector to override Plotly's inline styles without !important */
+    div[id*="Chart"],
+    div[id*="Heatmap"],
+    div[id*="bear_trap"],
+    canvas {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        min-height: 400px;
     }
 
     /* Logs Page on Mobile */
