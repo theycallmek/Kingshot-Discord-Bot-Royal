@@ -53,11 +53,6 @@ a {
     z-index: 100;
 }
 
-.sidebar .logo {
-    max-width: 100px;
-    margin: 0 auto 1rem;
-}
-
 .sidebar h2 {
     margin-top: 0;
     margin-bottom: 1rem;
@@ -167,8 +162,8 @@ tbody tr:hover {
     margin-bottom: 1rem;
     border: 1px solid var(--border-color);
     border-radius: 4px;
-    background-color: var(--background-color) !important;
-    color: var(--text-color) !important;
+    background-color: var(--background-color);
+    color: var(--text-color);
     box-sizing: border-box;
     -webkit-appearance: none;
     -moz-appearance: none;
@@ -182,12 +177,10 @@ tbody tr:hover {
 }
 
 /* Override browser autofill styles */
-.login-container input[type="password"]:-webkit-autofill,
-.login-container input[type="password"]:-webkit-autofill:hover,
-.login-container input[type="password"]:-webkit-autofill:focus {
-    -webkit-text-fill-color: var(--text-color) !important;
-    -webkit-box-shadow: 0 0 0px 1000px var(--background-color) inset !important;
-    box-shadow: 0 0 0px 1000px var(--background-color) inset !important;
+.login-container input[type="password"]:-webkit-autofill {
+    -webkit-text-fill-color: var(--text-color);
+    -webkit-box-shadow: 0 0 0px 1000px var(--background-color) inset;
+    box-shadow: 0 0 0px 1000px var(--background-color) inset;
     transition: background-color 5000s ease-in-out 0s;
 }
 
@@ -518,9 +511,7 @@ tbody tr:hover {
     font-size: 0.8rem;
 }
 
-.modal-content input[type="text"],
-.modal-content input[type="number"],
-.modal-content input[type="datetime-local"],
+.modal-content input,
 .modal-content select,
 .modal-content textarea {
     width: 100%;

@@ -6,19 +6,20 @@ and performing actions like creating or updating events. These routes
 typically return JSON responses.
 """
 
-from fastapi import APIRouter, Depends, Body, UploadFile, File, Form
+from fastapi import APIRouter, Depends, Body, UploadFile, File, Form, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from sqlmodel import select
-from typing import List
+from typing import List, Optional
 from datetime import datetime
 import tempfile
 from pathlib import Path
+from pydantic import BaseModel
 
 from web.core.database import get_attendance_session, get_cache_session, get_users_session, get_beartime_session
 from web.models import BearNotification, BearNotificationEmbed, NotificationDays
 from web.ocr_models import OCREventData, UserAvatarCache
-from web.services.ocr import get_ocr_reader, preprocess_image_for_ocr, extract_player_scores_from_ocr, match_and_store_scores
+from web.services.ocr import get_ocr_reader, preprocess_image_for_ocr, extract_player_scores_from_ocr, match_and_store_scores, mark_attendance_from_scores
 from .auth import is_authenticated
 
 router = APIRouter()

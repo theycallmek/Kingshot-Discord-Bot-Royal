@@ -203,7 +203,107 @@ def match_and_store_scores(
             player_fid = str(user_obj.fid)
             matched = True
 
-        # ... (rest of the matching and storing logic) ...
+        existing_mapping = cache_session.exec(
+            select(OCRPlayerMapping)
+            .where(OCRPlayerMapping.player_name == player_name)
+        ).first()
+
+        if existing_mapping:
+            existing_mapping.last_seen = datetime.now()
+            existing_mapping.times_seen += 1
+            existing_mapping.updated_at = datetime.now()
+            if matched and existing_mapping.player_fid == "0000000000":
+                existing_mapping.player_fid = player_fid
+                existing_mapping.confidence = player_data['confidence']
+            cache_session.add(existing_mapping)
+        else:
+            mapping = OCRPlayerMapping(
+                player_name=player_name,
+                player_fid=player_fid,
+                confidence=player_data['confidence'],
+                first_seen=datetime.now(),
+                last_seen=datetime.now(),
+                times_seen=1,
+                created_at=datetime.now(),
+                updated_at=datetime.now()
+            )
+            cache_session.add(mapping)
+
+        event_date_str = event_date.strftime('%Y-%m-%d')
+        existing_event = cache_session.exec(
+            select(OCREventData)
+            .where(OCREventData.event_name == event_name)
+            .where(OCREventData.player_name == player_name)
+            .where(OCREventData.event_date >= datetime.strptime(event_date_str, '%Y-%m-%d'))
+            .where(OCREventData.event_date < datetime.strptime(event_date_str, '%Y-%m-%d') + timedelta(days=1))
+        ).first()
+
+        if not existing_event:
+            event_record = OCREventData(
+                event_name=event_name,
+                event_type=event_type,
+                event_date=event_date,
+                player_name=player_name,
+                player_fid=player_fid if matched else None,
+                ranking=player_data.get('ranking'),
+                rank_inferred=False,
+                score=None,
+                damage_points=player_data.get('damage_points'),
+                time_value=None,
+                ocr_confidence=player_data['confidence'],
+                image_source=player_data['image_source'],
+                processing_session=session_id,
+                verification_count=1,
+                verified_sessions=session_id,
+                data_confidence=1.0,
+                extracted_at=datetime.now(),
+                created_at=datetime.now()
+            )
+            cache_session.add(event_record)
+        else:
+            new_damage = player_data.get('damage_points', 0)
+            new_confidence = player_data['confidence']
+            new_ranking = player_data.get('ranking')
+            should_update = False
+
+            verified_sessions_list = existing_event.verified_sessions.split(',') if existing_event.verified_sessions else []
+            is_new_verification = session_id not in verified_sessions_list
+
+            damage_tolerance = 1000
+            damage_matches = False
+            if new_damage and existing_event.damage_points:
+                damage_diff = abs(new_damage - existing_event.damage_points)
+                damage_matches = damage_diff <= damage_tolerance
+
+            ranking_matches = new_ranking == existing_event.ranking if new_ranking and existing_event.ranking else False
+
+            if is_new_verification and (damage_matches or ranking_matches):
+                verified_sessions_list.append(session_id)
+                existing_event.verified_sessions = ','.join(verified_sessions_list)
+                existing_event.verification_count = len(verified_sessions_list)
+                existing_event.data_confidence = min(2.0, 1.0 + (0.2 * (existing_event.verification_count - 1)))
+                should_update = True
+
+            if new_damage and new_damage > (existing_event.damage_points or 0):
+                existing_event.damage_points = new_damage
+                existing_event.processing_session = session_id
+                should_update = True
+
+            if new_ranking and not existing_event.ranking:
+                existing_event.ranking = new_ranking
+                should_update = True
+
+            if new_ranking and existing_event.ranking and new_ranking < existing_event.ranking:
+                existing_event.ranking = new_ranking
+                should_update = True
+
+            if new_confidence > existing_event.ocr_confidence:
+                existing_event.ocr_confidence = new_confidence
+                existing_event.image_source = player_data['image_source']
+                should_update = True
+
+            if should_update:
+                cache_session.add(existing_event)
 
         if matched:
             player_data['player_fid'] = player_fid
@@ -214,3 +314,59 @@ def match_and_store_scores(
             unmatched.append(player_data)
 
     return len(matched_players), matched_players, unmatched
+
+def mark_attendance_from_scores(matched_players, unmatched_players, event_name, ocr_session_id, attendance_session: Session):
+    """
+    Mark attendance for matched players only (unmatched players are tracked in OCR cache).
+    Handles duplicates by keeping the highest damage score when a player appears multiple times.
+    """
+    event_date = datetime.now()
+    session_id = f"{event_name}_{event_date.strftime('%Y%m%d')}"
+    marked_count = 0
+    updated_count = 0
+
+    with attendance_session as att_session:
+        # Mark attendance for matched players (real users)
+        for player_data in matched_players:
+            user = player_data['user']
+            new_damage = player_data.get('damage_points') or 0
+
+            # Check if already exists
+            existing = att_session.exec(
+                select(AttendanceRecord)
+                .where(AttendanceRecord.player_id == str(user.fid))
+                .where(AttendanceRecord.session_id == session_id)
+            ).first()
+
+            if not existing:
+                # Create new attendance record
+                attendance = AttendanceRecord(
+                    session_id=session_id,
+                    session_name=event_name,
+                    event_type="OCR Import",
+                    event_date=event_date,
+                    player_id=str(user.fid),
+                    player_name=user.nickname,
+                    alliance_id=str(user.alliance),
+                    alliance_name=f"Alliance {user.alliance}",
+                    status="present",
+                    points=new_damage,
+                    marked_at=datetime.now(),
+                    marked_by="OCR_System",
+                    marked_by_username="Automated OCR",
+                    created_at=datetime.now()
+                )
+                att_session.add(attendance)
+                marked_count += 1
+            else:
+                # Update if new damage score is higher (player appeared in multiple screenshots)
+                if new_damage and new_damage > (existing.points or 0):
+                    existing.points = new_damage
+                    existing.marked_at = datetime.now()  # Update timestamp
+                    att_session.add(existing)
+                    updated_count += 1
+
+        att_session.commit()
+
+    # Return total marked (new + updated)
+    return marked_count + updated_count
