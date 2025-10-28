@@ -16,6 +16,13 @@ import tempfile
 from pathlib import Path
 from pydantic import BaseModel
 
+def parse_player_name(player_name: str) -> (str, str):
+    """Parses a player name to extract the alliance tag and username."""
+    parts = player_name.split(']', 1)
+    if len(parts) == 2:
+        return parts[0][1:], parts[1].strip()
+    return 'N/A', player_name.strip()
+
 from web.core.database import get_attendance_session, get_cache_session, get_users_session, get_beartime_session
 from web.models import BearNotification, BearNotificationEmbed, NotificationDays
 from web.ocr_models import OCREventData, UserAvatarCache

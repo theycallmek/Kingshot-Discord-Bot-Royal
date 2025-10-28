@@ -24,8 +24,19 @@ from web.models import User, FurnaceChange, Alliance, NicknameChange, GiftCode, 
 from web.ocr_models import OCREventData, UserAvatarCache
 from web.services.plotting import generate_town_center_graphs, generate_bear_trap_graph
 from .auth import is_authenticated
+import json
+import plotly
+import plotly.graph_objects as go
+from web.ocr_models import OCRPlayerMapping
+from web.models import BearNotification, BearNotificationWithNickname
+from sqlalchemy.orm import selectinload
 
 router = APIRouter()
+
+def get_alliance_nicknames(alliance_session: Session) -> dict:
+    """Gets a mapping of alliance IDs to nicknames."""
+    alliances = alliance_session.exec(select(Alliance)).all()
+    return {str(a.alliance_id): a.name for a in alliances}
 
 @router.get("/", response_class=HTMLResponse)
 async def read_root(
@@ -170,9 +181,15 @@ async def read_events(
         if isinstance(event.repeat_minutes, int):
             event.repeat_minutes = str(event.repeat_minutes)
 
-        base_event_model = BearNotificationWithNickname.model_validate(event)
-        base_event_model.created_by_nickname = user_map.get(event.created_by, "Unknown")
-        base_event_model.embed_title = event.embeds[0].title if event.embeds else "No Title"
+        base_event_model = BearNotificationWithNickname(
+            id=event.id,
+            created_by_nickname=user_map.get(event.created_by, "Unknown"),
+            embed_title=event.embeds[0].title if event.embeds else "No Title",
+            next_notification=event.next_notification,
+            repeat_enabled=event.repeat_enabled,
+            repeat_minutes=event.repeat_minutes,
+            notification_days=event.notification_days
+        )
 
         occurrence = event.next_notification
         if occurrence.tzinfo is None:
@@ -200,6 +217,8 @@ async def read_events(
                      day_iter += timedelta(days=1)
                  if not found:
                      continue
+            else:
+                continue
 
         while occurrence.date() <= calendar_end_date:
             clone = base_event_model.model_copy(deep=True)

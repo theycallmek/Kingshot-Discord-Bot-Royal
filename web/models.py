@@ -115,6 +115,20 @@ class Alliance(SQLModel, table=True):
     name: str
     discord_server_id: int
 
+from pydantic import BaseModel
+
+class BearNotificationWithNickname(BaseModel):
+    id: int
+    created_by_nickname: Optional[str] = None
+    embed_title: Optional[str] = None
+    next_notification: Optional[datetime] = None
+    repeat_enabled: bool
+    repeat_minutes: str
+    notification_days: Optional[NotificationDays] = None
+
+    class Config:
+        arbitrary_types_allowed = True
+
 BearNotification.update_forward_refs()
 BearNotificationEmbed.update_forward_refs()
 NotificationDays.update_forward_refs()
