@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request, Form, Depends, Body, UploadFile, File
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, StreamingResponse
 from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy.orm import selectinload, Session
 from sqlmodel import create_engine, Session, select, SQLModel
@@ -123,9 +123,16 @@ def get_cache_session():
 
 # --- Helper Functions ---
 def get_alliance_nicknames(alliance_session: Session) -> dict:
-    """Get a mapping of alliance IDs to nicknames from the database."""
+    "Get a mapping of alliance IDs to nicknames from the database."
     alliances = alliance_session.exec(select(Alliance)).all()
     return {str(alliance.alliance_id): alliance.name for alliance in alliances}
+
+def parse_player_name(player_name: str) -> (str, str):
+    "Parse player name to separate alliance tag from username."
+    match = re.match(r'^\[(.*?)\](.*)$', player_name)
+    if match:
+        return match.group(1), match.group(2).strip()
+    return "", player_name.strip()
 
 # --- Authentication ---
 def is_authenticated(request: Request):
@@ -617,7 +624,7 @@ async def process_attendance(
     event_type: str = Form("Bear Trap"),
     authenticated: bool = Depends(is_authenticated)
 ):
-    """Process uploaded screenshots for attendance tracking"""
+    "Process uploaded screenshots for attendance tracking"
     if not authenticated:
         return JSONResponse({"error": "Not authenticated"}, status_code=401)
 
@@ -640,7 +647,7 @@ async def process_attendance(
 
             # Create OCR session ID
             event_date = datetime.now()
-            session_id = f"{event_name}_{event_date.strftime('%Y%m%d_%H%M%S')}"
+            session_id = f"{event_name.replace(' ', '_')}_{event_date.strftime('%Y%m%d_%H%M%S')}"
 
             # Process each image
             all_player_data = []
@@ -715,7 +722,7 @@ async def process_attendance(
 
 @app.get("/api/dashboard-data")
 async def get_dashboard_data(authenticated: bool = Depends(is_authenticated)):
-    """Get dashboard statistics for attendance page"""
+    "Get dashboard statistics for attendance page"
     if not authenticated:
         return JSONResponse({"error": "Not authenticated"}, status_code=401)
 
@@ -760,26 +767,42 @@ async def get_dashboard_data(authenticated: bool = Depends(is_authenticated)):
             )
             top_players_data = cache_session.exec(top_players_query).all()
 
-            # Group by player and sum damage
+            # Group by event to calculate ranks
+            event_players = defaultdict(list)
+            for record in top_players_data:
+                event_players[record.processing_session].append(record)
+
+            # Calculate ranks and stats
             player_stats = {}
+            for records in event_players.values():
+                sorted_by_damage = sorted(records, key=lambda p: -(p.damage_points or 0))
+                for rank_idx, player_record in enumerate(sorted_by_damage, 1):
+                    name = player_record.player_name
+                    alliance_tag, username = parse_player_name(name)
+                    if name not in player_stats:
+                        player_stats[name] = {
+                            'player_name': username,
+                            'alliance_tag': alliance_tag,
+                            'player_fid': player_record.player_fid or "0000000000",
+                            'total_damage': 0,
+                            'event_count': 0,
+                            'avg_verification': 0,
+                            'best_rank': None,
+                            'total_verifications': 0
+                        }
+                    if player_stats[name]['best_rank'] is None or rank_idx < player_stats[name]['best_rank']:
+                        player_stats[name]['best_rank'] = rank_idx
+
+            # Sum totals
+            player_events = defaultdict(set)
             for record in top_players_data:
                 name = record.player_name
-                if name not in player_stats:
-                    player_stats[name] = {
-                        'player_name': name,
-                        'player_fid': record.player_fid or "0000000000",
-                        'total_damage': 0,
-                        'event_count': 0,
-                        'avg_verification': 0,
-                        'best_rank': None,
-                        'total_verifications': 0
-                    }
                 player_stats[name]['total_damage'] += record.damage_points or 0
-                player_stats[name]['event_count'] += 1
                 player_stats[name]['total_verifications'] += record.verification_count
-                if record.ranking:
-                    if player_stats[name]['best_rank'] is None or record.ranking < player_stats[name]['best_rank']:
-                        player_stats[name]['best_rank'] = record.ranking
+                player_events[name].add(record.processing_session)
+            
+            for name in player_stats:
+                player_stats[name]['event_count'] = len(player_events[name])
 
             # Calculate averages and sort
             for name in player_stats:
@@ -789,6 +812,20 @@ async def get_dashboard_data(authenticated: bool = Depends(is_authenticated)):
             top_players = sorted(player_stats.values(),
                                key=lambda x: x['total_damage'],
                                reverse=True)[:10]
+
+            # Query UserAvatarCache to get avatar URLs for top players
+            avatar_cache_data = cache_session.exec(select(UserAvatarCache)).all()
+            avatar_map = {str(cache.fid): cache.avatar_url for cache in avatar_cache_data}
+            
+            # Add avatar URLs to each top player
+            for player in top_players:
+                player_fid = str(player.get('player_fid', ''))
+                if player_fid != "0000000000":
+                    # Matched player - get avatar from cache
+                    player['avatar_url'] = avatar_map.get(player_fid, '/static/images/user-icon.svg')
+                else:
+                    # Ghost player - use generic avatar
+                    player['avatar_url'] = '/static/images/user-icon.svg'
 
             # Get verification statistics
             all_event_data = cache_session.exec(select(OCREventData)).all()
@@ -825,76 +862,137 @@ async def get_dashboard_data(authenticated: bool = Depends(is_authenticated)):
 
 
 @app.get("/api/event-details/{session_id}")
-async def get_event_details(session_id: str, authenticated: bool = Depends(is_authenticated),
-                             cache_session: Session = Depends(get_cache_session),
-                             users_session: Session = Depends(get_users_session)):
-    """Get detailed player data for a specific event processing session"""
+async def get_event_details(session_id: str, authenticated: bool = Depends(is_authenticated)):
+    "Get detailed player data for a specific event processing session"
     if not authenticated:
         return JSONResponse({"error": "Not authenticated"}, status_code=401)
 
     try:
-        # Get all event data for the given session
-        event_data_query = select(OCREventData).where(OCREventData.processing_session == session_id)
-        event_players = cache_session.exec(event_data_query).all()
+        # Use sessions in context managers like get_dashboard_data does
+        with Session(cache_engine) as cache_session, Session(users_engine) as users_session:
+            # Get all event data for the given session
+            event_data_query = select(OCREventData).where(OCREventData.processing_session == session_id)
+            event_players = cache_session.exec(event_data_query).all()
 
-        if not event_players:
-            return JSONResponse({"error": "Event session not found"}, status_code=404)
+            if not event_players:
+                return JSONResponse({"error": "Event session not found"}, status_code=404)
 
-        # Get all users for nickname mapping
-        users = users_session.exec(select(User)).all()
-        user_map = {user.fid: user.nickname for user in users}
+            # Get all users for nickname mapping
+            users = users_session.exec(select(User)).all()
+            user_map = {user.fid: user.nickname for user in users}
 
-        # Prepare player details
-        players_details = []
-        for player in event_players:
-            is_matched = player.player_fid and player.player_fid != "0000000000"
-            nickname = "N/A"
-            if is_matched:
-                # FID is stored as an integer in User model, but string in OCREventData
-                try:
-                    nickname = user_map.get(int(player.player_fid), "Unknown")
-                except (ValueError, TypeError):
-                    nickname = "Invalid FID"
+            # Prepare player details
+            players_details = []
+            for player in event_players:
+                is_matched = player.player_fid and player.player_fid != "0000000000"
+                nickname = "N/A"
+                if is_matched:
+                    # FID is stored as an integer in User model, but string in OCREventData
+                    try:
+                        nickname = user_map.get(int(player.player_fid), "Unknown")
+                    except (ValueError, TypeError):
+                        nickname = "Invalid FID"
 
-            players_details.append({
-                "player_name": player.player_name,
-                "player_fid": player.player_fid,
-                "is_matched": is_matched,
-                "nickname": nickname,
-                "ranking": player.ranking,
-                "damage_points": player.damage_points,
-                "ocr_confidence": round(player.ocr_confidence * 100, 1),
-                "verification_count": player.verification_count,
-                "image_source": player.image_source,
+                alliance_tag, username = parse_player_name(player.player_name)
+                players_details.append({
+                    "player_name": username,
+                    "alliance_tag": alliance_tag,
+                    "player_fid": player.player_fid,
+                    "is_matched": is_matched,
+                    "nickname": nickname,
+                    "ranking": player.ranking,
+                    "damage_points": player.damage_points,
+                    "ocr_confidence": round(player.ocr_confidence * 100, 1),
+                    "verification_count": player.verification_count,
+                    "image_source": player.image_source,
+                })
+
+            # Sort players by damage points (highest first) for rank calculation
+            players_details.sort(key=lambda p: -(p.get('damage_points') or 0))
+            
+            # Assign calculated ranks based on damage (highest damage = rank 1)
+            for idx, player in enumerate(players_details, 1):
+                player['calculated_rank'] = idx
+
+            # Query UserAvatarCache to get avatar URLs for matched players
+            avatar_cache_data = cache_session.exec(select(UserAvatarCache)).all()
+            avatar_map = {str(cache.fid): cache.avatar_url for cache in avatar_cache_data}
+            
+            # Add avatar URLs to each player
+            for player in players_details:
+                if player.get('is_matched'):
+                    # Look up avatar from cache using player FID
+                    player_fid = str(player.get('player_fid', ''))
+                    player['avatar_url'] = avatar_map.get(player_fid, '/static/images/user-icon.svg')
+                else:
+                    # Use generic avatar for ghost players
+                    player['avatar_url'] = '/static/images/user-icon.svg'
+
+            # Get event metadata from the first player record
+            first_player = event_players[0]
+            event_info = {
+                "session_id": first_player.processing_session,
+                "event_name": first_player.event_name,
+                "event_date": first_player.event_date.isoformat(),
+                "player_count": len(players_details)
+            }
+
+            return JSONResponse({
+                "success": True,
+                "event_info": event_info,
+                "players": players_details
             })
-
-        # Sort players by ranking if available, otherwise by damage
-        players_details.sort(key=lambda p: (p['ranking'] is None, p['ranking'], -p.get('damage_points', 0)))
-
-
-        # Get event metadata from the first player record
-        first_player = event_players[0]
-        event_info = {
-            "session_id": first_player.processing_session,
-            "event_name": first_player.event_name,
-            "event_date": first_player.event_date.isoformat(),
-            "player_count": len(players_details)
-        }
-
-        return JSONResponse({
-            "success": True,
-            "event_info": event_info,
-            "players": players_details
-        })
 
     except Exception as e:
         import traceback
-        return JSONResponse({"error": str(e), "trace": traceback.format_exc()}, status_code=500)
+        error_trace = traceback.format_exc()
+        print(f"[ERROR] Exception in get_event_details for session {session_id}:")
+        print(error_trace)
+        return JSONResponse({"error": str(e), "trace": error_trace}, status_code=500)
+
+
+@app.get("/api/past-events")
+async def get_past_events(authenticated: bool = Depends(is_authenticated), beartime_session: Session = Depends(get_beartime_session)):
+    if not authenticated:
+        return JSONResponse({"error": "Not authenticated"}, status_code=401)
+
+    try:
+        now = datetime.now(pytz.utc)
+        past_events_from_db = beartime_session.exec(
+            select(BearNotification)
+            .options(selectinload(BearNotification.embeds))
+            .where(BearNotification.next_notification < now)
+            .order_by(BearNotification.next_notification.desc())
+            .limit(20)
+        ).all()
+
+        unique_events = {}
+        for event in past_events_from_db:
+            if event.embeds and event.embeds[0].title:
+                title = event.embeds[0].title
+                if title not in unique_events:
+                    unique_events[title] = event.next_notification
+        
+        sorted_events = sorted(unique_events.items(), key=lambda item: item[1], reverse=True)
+        
+        recent_events = sorted_events[:5]
+
+        events_list = [
+            {"name": title, "date": dt.isoformat()}
+            for title, dt in recent_events
+        ]
+
+        return JSONResponse({"success": True, "events": events_list})
+
+    except Exception as e:
+        import traceback
+        print(traceback.format_exc())
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 
 @app.get("/api/refresh-avatars")
 async def refresh_avatars(authenticated: bool = Depends(is_authenticated)):
-    """Stream progress updates while fetching and caching avatar URLs for all users"""
+    "Stream progress updates while fetching and caching avatar URLs for all users"
     if not authenticated:
         return JSONResponse({"error": "Not authenticated"}, status_code=401)
 
@@ -1006,7 +1104,6 @@ async def refresh_avatars(authenticated: bool = Depends(is_authenticated)):
 
     return StreamingResponse(generate_progress(), media_type="text/event-stream")
 
-
 def preprocess_image_for_ocr(image_path):
     """
     Preprocess image using adaptive thresholding for improved OCR accuracy.
@@ -1066,9 +1163,8 @@ def preprocess_image_for_ocr(image_path):
 
     return image_path
 
-
 def extract_player_scores_from_ocr(ocr_results, image_name):
-    """Extract player names, rankings, and scores from PaddleOCR results"""
+    "Extract player names, rankings, and scores from PaddleOCR results"
     player_data = []
 
     # PaddleOCR returns a list with one dict containing rec_texts and rec_scores
@@ -1195,7 +1291,7 @@ def extract_player_scores_from_ocr(ocr_results, image_name):
     return player_data
 
 def match_and_store_scores(player_data_list, session_id, event_name, event_type, event_date):
-    """Match players and store scores in cache using new streamlined models"""
+    "Match players and store scores in cache using new streamlined models"
     matched_players = []
     unmatched = []
 
@@ -1354,7 +1450,6 @@ def match_and_store_scores(player_data_list, session_id, event_name, event_type,
 
     return len(matched_players), matched_players, unmatched
 
-
 def mark_attendance_from_scores(matched_players, unmatched_players, event_name, ocr_session_id):
     """
     Mark attendance for matched players only (unmatched players are tracked in OCR cache).
@@ -1410,7 +1505,6 @@ def mark_attendance_from_scores(matched_players, unmatched_players, event_name, 
 
     # Return total marked (new + updated)
     return marked_count + updated_count
-
 
 def dec_to_hex(decimal_color):
     if decimal_color is None:
@@ -1792,7 +1886,7 @@ async def read_logs(request: Request, authenticated: bool = Depends(is_authentic
     furnace_changes = changes_session.exec(select(FurnaceChange)).all()
 
     try:
-        nickname_changes.sort(key=lambda x: datetime.fromisoformat(x.change_date), reverse=_True)
+        nickname_changes.sort(key=lambda x: datetime.fromisoformat(x.change_date), reverse=True)
         furnace_changes.sort(key=lambda x: datetime.fromisoformat(x.change_date), reverse=True)
     except (ValueError, TypeError):
         pass

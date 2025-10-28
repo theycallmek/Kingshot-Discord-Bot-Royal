@@ -2,8 +2,22 @@
 
 {% block title %}Attendance - DOA Dashboard{% endblock %}
 
+{% block styles %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/litepicker/dist/css/litepicker.css"/>
+<link rel="stylesheet" href="/static/dark-mode.css">
+{% endblock %}
+
 {% block content %}
 <style>
+    .litepicker {
+        z-index: 10000 !important;
+    }
+    .tabs-container {
+        max-width: 1400px;
+        margin: 1rem auto;
+        padding: 0 0.5rem; /* Add horizontal padding */
+        box-sizing: border-box; /* Ensure padding is included in width */
+    }
     .upload-container {
         max-width: 1200px;
         margin: 2rem auto;
@@ -447,6 +461,82 @@
         background-color: #e9ecef;
     }
 
+    /* Custom Date/Time Picker Styles - Match Events Calendar */
+    .custom-date-picker-input,
+    .custom-time-picker-select {
+        padding: 0.5rem !important;
+        border: 1px solid var(--border-color) !important;
+        border-radius: 4px !important;
+        background-color: var(--background-color) !important;
+        color: var(--text-color) !important;
+        font-size: 0.9rem !important;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+        transition: all 0.2s ease !important;
+        box-sizing: border-box !important;
+    }
+
+    .custom-date-picker-input:hover,
+    .custom-time-picker-select:hover {
+        border-color: var(--primary-color) !important;
+        background-color: var(--surface-color) !important;
+    }
+
+    .custom-date-picker-input:focus,
+    .custom-time-picker-select:focus {
+        outline: none !important;
+        border-color: var(--primary-color) !important;
+        box-shadow: 0 0 0 3px rgba(0, 168, 255, 0.2) !important;
+        background-color: var(--surface-color) !important;
+    }
+
+    .custom-time-picker-select {
+        appearance: none !important;
+        -webkit-appearance: none !important;
+        -moz-appearance: none !important;
+        background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e0e0e0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e") !important;
+        background-repeat: no-repeat !important;
+        background-position: right 0.7rem center !important;
+        background-size: 1.2em !important;
+        padding-right: 2.5rem !important;
+    }
+
+    body.light-mode .custom-date-picker-input,
+    body.light-mode .custom-time-picker-select {
+        background-color: #ffffff !important;
+        color: #333333 !important;
+        border-color: #dddddd !important;
+    }
+
+    body.light-mode .custom-date-picker-input:hover,
+    body.light-mode .custom-time-picker-select:hover {
+        border-color: var(--primary-color) !important;
+        background-color: #f5f5f5 !important;
+    }
+
+    body.light-mode .custom-date-picker-input:focus,
+    body.light-mode .custom-time-picker-select:focus {
+        box-shadow: 0 0 0 3px rgba(0, 168, 255, 0.15) !important;
+        background-color: #ffffff !important;
+    }
+
+    body.light-mode .custom-time-picker-select {
+        background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23333333' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e") !important;
+    }
+
+    /* Litepicker calendar styling */
+    .litepicker {
+        background-color: var(--surface-color) !important;
+        border: 1px solid var(--border-color) !important;
+        border-radius: 8px !important;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5) !important;
+    }
+
+    body.light-mode .litepicker {
+        background-color: #ffffff !important;
+        border: 1px solid #dddddd !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+    }
+
     /* Results section */
     .results-section {
         margin-top: 2rem;
@@ -647,11 +737,6 @@
 
 
     /* Tab Navigation Styles */
-    .tabs-container {
-        max-width: 1400px;
-        margin: 2rem auto;
-    }
-
     .tabs-nav {
         display: flex;
         gap: 0.5rem;
@@ -691,6 +776,7 @@
     /* Dashboard Styles */
     .dashboard-grid {
         display: grid;
+        grid-template-columns: 1fr;
         gap: 1.5rem;
         margin-bottom: 2rem;
     }
@@ -905,6 +991,32 @@
         </ul>
     </div>
 
+    <div id="event-selection-container" class="form-group" style="margin-bottom: 1rem;">
+        <label for="event-name-select">Event</label>
+        <select id="event-name-select" class="custom-time-picker-select"></select>
+    </div>
+
+    <div id="custom-date-container" style="display: none; margin-bottom: 1rem;">
+        <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end;">
+            <div style="flex: 1 1 auto; min-width: 150px;">
+                <label for="custom-event-name-input">Custom Event Name</label>
+                <input type="text" id="custom-event-name-input" placeholder="Enter event name..." class="custom-date-picker-input" style="width: 100%;">
+            </div>
+            <div style="flex: 0 0 130px;">
+                <label for="custom-date-input">Date (UTC):</label>
+                <input type="text" id="custom-date-input" name="custom_date_input" placeholder="Select Date..." class="custom-date-picker-input" style="width: 100%;">
+            </div>
+            <div style="flex: 0 0 80px;">
+                <label for="custom-hour-input">Hour:</label>
+                <select id="custom-hour-input" name="custom_hour_input" class="custom-time-picker-select" style="width: 100%;"></select>
+            </div>
+            <div style="flex: 0 0 80px;">
+                <label for="custom-minute-input">Minute:</label>
+                <select id="custom-minute-input" name="custom_minute_input" class="custom-time-picker-select" style="width: 100%;"></select>
+            </div>
+        </div>
+    </div>
+
     <div class="upload-area" id="uploadArea">
         <div class="upload-icon">📸</div>
         <div class="upload-text">Drop screenshots here or click to browse</div>
@@ -1030,6 +1142,10 @@
 </div>
 
 
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/litepicker/dist/litepicker.js"></script>
 <script>
     const uploadArea = document.getElementById('uploadArea');
     const fileInput = document.getElementById('fileInput');
@@ -1041,6 +1157,13 @@
     const imageModal = document.getElementById('imageModal');
     const modalImage = document.getElementById('modalImage');
     const modalClose = document.getElementById('modalClose');
+    const eventNameSelect = document.getElementById('event-name-select');
+    const customEventNameContainer = document.getElementById('custom-event-name-container');
+    const customEventNameInput = document.getElementById('custom-event-name-input');
+    const customDateContainer = document.getElementById('custom-date-container');
+    const customDateInput = document.getElementById('custom-date-input');
+    const customHourInput = document.getElementById('custom-hour-input');
+    const customMinuteInput = document.getElementById('custom-minute-input');
 
     let selectedFiles = [];
 
@@ -1260,8 +1383,31 @@
                 formData.append('files', file);
                 addStatusDetail(`${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`, 'info', '📸');
             });
-            formData.append('event_name', 'Bear Trap');
-            formData.append('event_type', 'Bear Trap');
+
+            let eventName;
+            if (eventNameSelect.value === 'custom') {
+                if (!customEventNameInput.value.trim()) {
+                    alert('Please enter a name for the custom event.');
+                    statusSection.classList.remove('active');
+                    processBtn.disabled = false;
+                    processBtn.textContent = 'Process Attendance';
+                    return;
+                }
+                if (!customDateInput.value || !customHourInput.value || !customMinuteInput.value) {
+                    alert('For custom events, please select a date and time.');
+                    statusSection.classList.remove('active');
+                    processBtn.disabled = false;
+                    processBtn.textContent = 'Process Attendance';
+                    return;
+                }
+                const eventDate = `${customDateInput.value}T${customHourInput.value}:${customMinuteInput.value}:00Z`;
+                formData.append('event_date', eventDate);
+                eventName = customEventNameInput.value.trim();
+            } else {
+                eventName = eventNameSelect.value;
+            }
+            formData.append('event_name', eventName);
+            formData.append('event_type', eventName);
 
             await new Promise(resolve => setTimeout(resolve, 300));
 
@@ -1489,12 +1635,13 @@
                 eventsHTML += '<th>Event Name</th><th>Date</th><th>Players</th><th>Verified</th><th>Avg Verifications</th></tr></thead><tbody>';
 
                 data.recent_events.forEach(event => {
-                    const eventDate = new Date(event.event_date).toLocaleDateString();
+                    const eventDate = new Date(event.event_date);
+                    const dateString = `${(eventDate.getUTCMonth() + 1).toString().padStart(2, '0')}/${eventDate.getUTCDate().toString().padStart(2, '0')}/${eventDate.getUTCFullYear().toString().slice(-2)} ${eventDate.getUTCHours().toString().padStart(2, '0')}:${eventDate.getUTCMinutes().toString().padStart(2, '0')} UTC`;
                     const avgVerif = event.player_count > 0 ? (event.total_verifications / event.player_count).toFixed(1) : '0.0';
                     eventsHTML += `
                         <tr class="event-row" data-session-id="${event.session_id}" title="Click to view details">
                             <td><strong>${event.event_name}</strong></td>
-                            <td>${eventDate}</td>
+                            <td>${dateString}</td>
                             <td>${event.player_count}</td>
                             <td>${event.verified_count}</td>
                             <td>${avgVerif}x</td>
@@ -1511,14 +1658,19 @@
             // Populate Top Players
             if (data.top_players && data.top_players.length > 0) {
                 let playersHTML = '<div style="overflow-x: auto;"><table class="results-table" style="min-width: 100%;"><thead><tr>';
-                playersHTML += '<th>Player Name</th><th>Total Damage</th><th>Events</th><th>Best Rank</th><th>Avg Verif</th></tr></thead><tbody>';
+                playersHTML += '<th>Avatar</th><th>Alliance</th><th>Player Name</th><th>Total Damage</th><th>Events</th><th>Best Rank</th><th>Avg Verif</th></tr></thead><tbody>';
 
                 data.top_players.forEach(player => {
                     const isMatched = player.player_fid !== "0000000000";
                     const nameDisplay = isMatched ? player.player_name : `${player.player_name} 👻`;
                     const bestRank = player.best_rank ? `#${player.best_rank}` : 'N/A';
+                    const avatarHTML = player.avatar_url 
+                        ? `<img src="${player.avatar_url}" alt="Avatar" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">` 
+                        : '<span>N/A</span>';
                     playersHTML += `
                         <tr>
+                            <td>${avatarHTML}</td>
+                            <td><strong>${player.alliance_tag}</strong></td>
                             <td><strong>${nameDisplay}</strong></td>
                             <td>${player.total_damage.toLocaleString()}</td>
                             <td>${player.event_count}</td>
@@ -1587,6 +1739,7 @@
     // Load dashboard data on page load (since dashboard is default tab)
     document.addEventListener('DOMContentLoaded', () => {
         loadDashboardData();
+        loadPastEvents();
     });
 
     // ========================================
@@ -1643,16 +1796,33 @@
             const eventDate = new Date(data.event_info.event_date).toLocaleDateString();
             eventModalTitle.textContent = `${data.event_info.event_name} - ${eventDate}`;
 
+            // Store players data globally for sorting
+            window.currentEventPlayers = data.players;
+            
             // Populate modal body
             let playersHTML = `
-                <p style="margin-top: 0; color: var(--text-color); opacity: 0.8;">
-                    Total Players: ${data.event_info.player_count}
-                </p>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <p style="margin: 0; color: var(--text-color); opacity: 0.8;">
+                        Total Players: ${data.event_info.player_count}
+                    </p>
+                    <div class="sort-links">
+                        <span><strong>Sort:</strong></span>
+                        <a href="#" id="sort-rank-link" class="sort-link active">Rank ↑</a>
+                        <span>|</span>
+                        <a href="#" id="sort-alliance-link" class="sort-link">Alliance</a>
+                        <span>|</span>
+                        <a href="#" id="sort-name-link" class="sort-link">A-Z</a>
+                        <span>|</span>
+                        <a href="#" id="sort-damage-link" class="sort-link">Damage ↓</a>
+                    </div>
+                </div>
                 <div class="results-table-container" style="padding: 0; border: none;">
                     <table class="results-table">
                         <thead>
                             <tr>
+                                <th>Avatar</th>
                                 <th>Rank</th>
+                                <th>Alliance</th>
                                 <th>Player Name</th>
                                 <th>Damage</th>
                                 <th>Matched User</th>
@@ -1663,7 +1833,10 @@
             `;
 
             data.players.forEach(player => {
-                const rank = player.ranking ? `#${player.ranking}` : 'N/A';
+                const avatarHTML = player.avatar_url 
+                    ? `<img src="${player.avatar_url}" alt="Avatar" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">` 
+                    : '<span>N/A</span>';
+                const rank = player.calculated_rank ? `#${player.calculated_rank}` : 'N/A';
                 const damage = player.damage_points ? player.damage_points.toLocaleString() : 'N/A';
                 const matchedUser = player.is_matched
                     ? `<span style="color: #28a745;">${player.nickname}</span>`
@@ -1671,7 +1844,9 @@
 
                 playersHTML += `
                     <tr>
+                        <td>${avatarHTML}</td>
                         <td><strong>${rank}</strong></td>
+                        <td><strong>${player.alliance_tag}</strong></td>
                         <td>${player.player_name}</td>
                         <td>${damage}</td>
                         <td>${matchedUser}</td>
@@ -1683,11 +1858,235 @@
             playersHTML += '</tbody></table></div>';
             eventModalBody.innerHTML = playersHTML;
 
+            // Setup sorting after rendering
+            setupEventDetailsSorting();
+
         } catch (error) {
             console.error('Error loading event details:', error);
             eventModalTitle.textContent = 'Error';
             eventModalBody.innerHTML = `<p style="color: #dc3545;">Could not load event details: ${error.message}</p>`;
         }
+    }
+
+    // Setup sorting for event details modal
+    function setupEventDetailsSorting() {
+        const sortRankLink = document.getElementById('sort-rank-link');
+        const sortAllianceLink = document.getElementById('sort-alliance-link');
+        const sortNameLink = document.getElementById('sort-name-link');
+        const sortDamageLink = document.getElementById('sort-damage-link');
+
+        let rankSortAscending = true; // Default: ascending (1-50)
+        let allianceSortAscending = true; // Default: A-Z
+        let nameSortAscending = true; // Default: A-Z
+        let damageSortAscending = false; // Default: high to low
+
+        sortRankLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            rankSortAscending = !rankSortAscending;
+            sortRankLink.textContent = rankSortAscending ? 'Rank ↑' : 'Rank ↓';
+
+            sortRankLink.classList.add('active');
+            sortAllianceLink.classList.remove('active');
+            sortNameLink.classList.remove('active');
+            sortDamageLink.classList.remove('active');
+
+            sortEventPlayers('ranking', rankSortAscending ? 'asc' : 'desc');
+        });
+
+        sortAllianceLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            allianceSortAscending = !allianceSortAscending;
+            sortAllianceLink.textContent = allianceSortAscending ? 'Alliance A-Z' : 'Alliance Z-A';
+
+            sortAllianceLink.classList.add('active');
+            sortRankLink.classList.remove('active');
+            sortNameLink.classList.remove('active');
+            sortDamageLink.classList.remove('active');
+
+            sortEventPlayers('alliance', allianceSortAscending ? 'asc' : 'desc');
+        });
+
+        sortNameLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            nameSortAscending = !nameSortAscending;
+            sortNameLink.textContent = nameSortAscending ? 'A-Z' : 'Z-A';
+
+            sortNameLink.classList.add('active');
+            sortRankLink.classList.remove('active');
+            sortAllianceLink.classList.remove('active');
+            sortDamageLink.classList.remove('active');
+
+            sortEventPlayers('player_name', nameSortAscending ? 'asc' : 'desc');
+        });
+
+        sortDamageLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            damageSortAscending = !damageSortAscending;
+            sortDamageLink.textContent = damageSortAscending ? 'Damage ↑' : 'Damage ↓';
+
+            sortDamageLink.classList.add('active');
+            sortRankLink.classList.remove('active');
+            sortAllianceLink.classList.remove('active');
+            sortNameLink.classList.remove('active');
+
+            sortEventPlayers('damage_points', damageSortAscending ? 'asc' : 'desc');
+        });
+
+        // Initial sort by rank ascending
+        sortEventPlayers('ranking', 'asc');
+    }
+
+    // Sort event players table
+    function sortEventPlayers(sortBy, order) {
+        const tbody = eventModalBody.querySelector('.results-table tbody');
+        if (!tbody) return;
+        
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+
+        rows.sort((a, b) => {
+            let valA, valB;
+
+            if (sortBy === 'ranking') {
+                // Extract ranking number from rank column (index 1)
+                let rankTextA = a.cells[1].textContent.trim().replace('#', '').trim();
+                let rankTextB = b.cells[1].textContent.trim().replace('#', '').trim();
+                
+                valA = rankTextA === 'N/A' || rankTextA === '' ? 999 : parseInt(rankTextA) || 999;
+                valB = rankTextB === 'N/A' || rankTextB === '' ? 999 : parseInt(rankTextB) || 999;
+            } else if (sortBy === 'alliance') {
+                // Alliance is in the 3rd column (index 2)
+                valA = a.cells[2].textContent.toLowerCase().trim();
+                valB = b.cells[2].textContent.toLowerCase().trim();
+            } else if (sortBy === 'player_name') {
+                // Player name is in the 4th column (index 3)
+                valA = a.cells[3].textContent.toLowerCase().trim();
+                valB = b.cells[3].textContent.toLowerCase().trim();
+            } else if (sortBy === 'damage_points') {
+                // Damage is in the 5th column (index 4)
+                const damageTextA = a.cells[4].textContent.trim().replace(/,/g, '');
+                const damageTextB = b.cells[4].textContent.trim().replace(/,/g, '');
+                valA = damageTextA === 'N/A' || damageTextA === '' ? 0 : parseInt(damageTextA) || 0;
+                valB = damageTextB === 'N/A' || damageTextB === '' ? 0 : parseInt(damageTextB) || 0;
+            }
+
+            if (typeof valA === 'number' && typeof valB === 'number') {
+                return order === 'asc' ? valA - valB : valB - valA;
+            } else {
+                if (valA < valB) {
+                    return order === 'asc' ? -1 : 1;
+                }
+                if (valA > valB) {
+                    return order === 'asc' ? 1 : -1;
+                }
+                return 0;
+            }
+        });
+
+        rows.forEach(row => tbody.appendChild(row));
+    }
+
+    async function loadPastEvents() {
+        try {
+            const response = await fetch('/api/past-events');
+            const data = await response.json();
+
+            eventNameSelect.innerHTML = ''; // Clear existing options
+
+            if (data.success && data.events && data.events.length > 0) {
+                const recentEvents = data.events.slice(0, 5);
+
+                recentEvents.forEach(event => {
+                    const option = document.createElement('option');
+                    const eventDate = new Date(event.date);
+                    const dateString = `${(eventDate.getUTCMonth() + 1).toString().padStart(2, '0')}/${eventDate.getUTCDate().toString().padStart(2, '0')}/${eventDate.getUTCFullYear().toString().slice(-2)} ${eventDate.getUTCHours().toString().padStart(2, '0')}:${eventDate.getUTCMinutes().toString().padStart(2, '0')} UTC`;
+                    
+                    option.value = event.name;
+                    let trimmedName = event.name.replace(/\s*Notification$|\s*Event!$/i, '').trim();
+                    option.textContent = `${trimmedName} (${dateString})`;
+                    eventNameSelect.appendChild(option);
+                });
+
+                eventNameSelect.innerHTML += '<option value="custom">Custom Date</option>';
+                // Set the most recent event as the default
+                eventNameSelect.value = recentEvents[0].name;
+            } else {
+                eventNameSelect.innerHTML = '<option value="custom">Custom Date</option>';
+                eventNameSelect.value = 'custom';
+            }
+        } catch (error) {
+            console.error('Error loading past events:', error);
+            eventNameSelect.innerHTML = '<option value="custom">Custom Date</option>';
+            eventNameSelect.value = 'custom';
+        }
+        // Trigger change to ensure custom date container visibility is correct
+        eventNameSelect.dispatchEvent(new Event('change'));
+    }
+
+    eventNameSelect.addEventListener('change', () => {
+        const isCustom = eventNameSelect.value === 'custom';
+        customDateContainer.style.display = isCustom ? 'block' : 'none';
+    });
+
+    // Initialize Litepicker for custom date
+    const picker = new Litepicker({
+        element: document.getElementById('custom-date-input'),
+        parentEl: document.body,
+        format: 'YYYY-MM-DD',
+        autoApply: true,
+        singleMode: true,
+        showTooltip: false,
+    });
+
+    picker.on('show', () => {
+        if (!document.body.classList.contains('light-mode')) {
+            const pickerEl = document.querySelector('.litepicker');
+            if (pickerEl) {
+                const darkTheme = {
+                    '--litepicker-container-months-color-bg': '#1e1e1e',
+                    '--litepicker-container-months-box-shadow-color': '#000',
+                    '--litepicker-footer-color-bg': '#1e1e1e',
+                    '--litepicker-footer-box-shadow-color': '#000',
+                    '--litepicker-tooltip-color-bg': '#1e1e1e',
+                    '--litepicker-month-header-color': '#e0e0e0',
+                    '--litepicker-button-prev-month-color': '#e0e0e0',
+                    '--litepicker-button-next-month-color': '#e0e0e0',
+                    '--litepicker-button-prev-month-color-hover': '#00a8ff',
+                    '--litepicker-button-next-month-color-hover': '#00a8ff',
+                    '--litepicker-month-weekday-color': '#e0e0e0',
+                    '--litepicker-month-week-number-color': '#e0e0e0',
+                    '--litepicker-day-color': '#e0e0e0',
+                    '--litepicker-day-color-hover': '#fff',
+                    '--litepicker-is-today-color': '#fff',
+                    '--litepicker-is-in-range-color': '#2a2a2a',
+                    '--litepicker-is-locked-color': '#4a4a4a',
+                    '--litepicker-is-start-color': '#fff',
+                    '--litepicker-is-start-color-bg': '#00a8ff',
+                    '--litepicker-is-end-color': '#fff',
+                    '--litepicker-is-end-color-bg': '#00a8ff',
+                    '--litepicker-button-cancel-color': '#e0e0e0',
+                    '--litepicker-button-cancel-color-bg': '#2c2c2c',
+                    '--litepicker-button-apply-color': '#fff',
+                    '--litepicker-button-apply-color-bg': '#00a8ff',
+                    '--litepicker-button-reset-color': '#e0e0e0',
+                    '--litepicker-button-reset-color-hover': '#00a8ff',
+                    '--litepicker-highlighted-day-color': '#1e1e1e',
+                    '--litepicker-highlighted-day-color-bg': '#00a8ff',
+                };
+                for (const [key, value] of Object.entries(darkTheme)) {
+                    pickerEl.style.setProperty(key, value);
+                }
+            }
+        }
+    });
+
+    // Populate hour and minute dropdowns
+    for (let i = 0; i < 24; i++) {
+        const hour = i.toString().padStart(2, '0');
+        customHourInput.add(new Option(hour, hour));
+    }
+    for (let i = 0; i < 60; i++) {
+        const minute = i.toString().padStart(2, '0');
+        customMinuteInput.add(new Option(minute, minute));
     }
 
 </script>
