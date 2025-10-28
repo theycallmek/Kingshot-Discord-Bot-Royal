@@ -1897,3 +1897,127 @@ async def read_logs(request: Request, authenticated: bool = Depends(is_authentic
         "furnace_changes": furnace_changes,
         "user_map": user_map
     })
+
+@app.get("/data", response_class=HTMLResponse)
+async def read_data(request: Request, authenticated: bool = Depends(is_authenticated),
+                   users_session: Session = Depends(get_users_session),
+                   alliance_session: Session = Depends(get_alliance_session),
+                   cache_session: Session = Depends(get_cache_session)):
+    if not authenticated:
+        return RedirectResponse(url="/login", status_code=303)
+
+    # --- Furnace Level Distribution Histogram ---
+    users = users_session.exec(select(User)).all()
+    furnace_levels = [user.furnace_lv for user in users if user.furnace_lv is not None]
+
+    fig_hist = go.Figure(data=[go.Histogram(x=furnace_levels, nbinsx=20)])
+
+    fig_hist.update_layout(
+        title='Furnace Level Distribution',
+        xaxis_title='Furnace Level',
+        yaxis_title='Number of Players',
+        template='plotly_dark',
+        plot_bgcolor='#1e1e1e',
+        paper_bgcolor='#1e1e1e',
+        font=dict(color='#e0e0e0'),
+        margin=dict(l=40, r=10, t=80, b=40),
+    )
+
+    graph_hist_json = json.dumps(fig_hist, cls=plotly.utils.PlotlyJSONEncoder)
+
+    # --- Alliance Member Count ---
+    alliance_nicknames = get_alliance_nicknames(alliance_session)
+    alliance_counts = defaultdict(int)
+    for user in users:
+        if user.alliance:
+            alliance_counts[user.alliance] += 1
+
+    alliance_names = [alliance_nicknames.get(aid, f'Alliance {aid}') for aid in alliance_counts.keys()]
+    member_counts = list(alliance_counts.values())
+
+    fig_bar = go.Figure(data=[go.Bar(x=alliance_names, y=member_counts)])
+
+    fig_bar.update_layout(
+        title='Alliance Member Count',
+        xaxis_title='Alliance',
+        yaxis_title='Number of Members',
+        template='plotly_dark',
+        plot_bgcolor='#1e1e1e',
+        paper_bgcolor='#1e1e1e',
+        font=dict(color='#e0e0e0'),
+        margin=dict(l=40, r=10, t=80, b=40),
+    )
+
+    graph_bar_json = json.dumps(fig_bar, cls=plotly.utils.PlotlyJSONEncoder)
+
+    # --- Bear Trap Damage ---
+    thirty_days_ago = datetime.now() - timedelta(days=30)
+    bear_trap_query = (
+        select(OCREventData)
+        .where(OCREventData.event_type == 'Bear Trap')
+        .where(OCREventData.event_date >= thirty_days_ago)
+        .where(OCREventData.damage_points.isnot(None))
+    )
+    bear_trap_data = cache_session.exec(bear_trap_query).all()
+
+    player_damage = defaultdict(int)
+    for record in bear_trap_data:
+        player_damage[record.player_name] += record.damage_points
+
+    sorted_players = sorted(player_damage.items(), key=lambda item: item[1], reverse=True)[:15]
+    player_names = [item[0] for item in sorted_players]
+    damage_values = [item[1] for item in sorted_players]
+
+    fig_bear_trap = go.Figure(data=[go.Bar(
+        x=player_names,
+        y=damage_values,
+        marker=dict(
+            color=damage_values,
+            colorscale='Viridis',
+            showscale=True
+        ),
+        hovertemplate='<b>%{x}</b><br>Damage: %{y}<extra></extra>'
+    )])
+
+    fig_bear_trap.update_layout(
+        title='Top 15 Bear Trap Damage Dealers (Last 30 Days)',
+        xaxis_title='Player',
+        yaxis_title='Total Damage',
+        template='plotly_dark',
+        plot_bgcolor='#1e1e1e',
+        paper_bgcolor='#1e1e1e',
+        font=dict(color='#e0e0e0'),
+        margin=dict(l=40, r=10, t=80, b=40),
+        xaxis={'categoryorder':'total descending'}
+    )
+    graph_bear_trap_json = json.dumps(fig_bear_trap, cls=plotly.utils.PlotlyJSONEncoder)
+
+    # --- Player Activity ---
+    player_activity_query = select(OCRPlayerMapping)
+    player_activity_data = cache_session.exec(player_activity_query).all()
+
+    now = datetime.now()
+    last_seen_days = [(now - record.last_seen).days for record in player_activity_data]
+
+    fig_activity = go.Figure(data=[go.Histogram(x=last_seen_days, nbinsx=30)])
+
+    fig_activity.update_layout(
+        title='Player Activity (Days Since Last Seen)',
+        xaxis_title='Days Since Last Seen',
+        yaxis_title='Number of Players',
+        template='plotly_dark',
+        plot_bgcolor='#1e1e1e',
+        paper_bgcolor='#1e1e1e',
+        font=dict(color='#e0e0e0'),
+        margin=dict(l=40, r=10, t=80, b=40),
+    )
+
+    graph_activity_json = json.dumps(fig_activity, cls=plotly.utils.PlotlyJSONEncoder)
+
+    return templates.TemplateResponse("data.html", {
+        "request": request,
+        "graph_hist_json": graph_hist_json,
+        "graph_bar_json": graph_bar_json,
+        "graph_bear_trap_json": graph_bear_trap_json,
+        "graph_activity_json": graph_activity_json
+    })

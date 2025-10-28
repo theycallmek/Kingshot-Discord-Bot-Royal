@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Data{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Data</h1>
+<div class="card-container">
+    <div class="card">
+        <div id="furnace-level-hist"></div>
+    </div>
+    <div class="card">
+        <div id="alliance-member-bar"></div>
+    </div>
+    <div class="card">
+        <div id="bear-trap-damage-bar"></div>
+    </div>
+    <div class="card">
+        <div id="player-activity-hist"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script>
+    var graph_hist = {{ graph_hist_json | safe }};
+    Plotly.newPlot('furnace-level-hist', graph_hist.data, graph_hist.layout);
+
+    var graph_bar = {{ graph_bar_json | safe }};
+    Plotly.newPlot('alliance-member-bar', graph_bar.data, graph_bar.layout);
+
+    var graph_bear_trap = {{ graph_bear_trap_json | safe }};
+    Plotly.newPlot('bear-trap-damage-bar', graph_bear_trap.data, graph_bear_trap.layout);
+
+    var graph_activity = {{ graph_activity_json | safe }};
+    Plotly.newPlot('player-activity-hist', graph_activity.data, graph_activity.layout);
+</script>
+{% endblock %}
