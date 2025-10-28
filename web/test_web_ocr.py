@@ -10,7 +10,7 @@ import os
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # Import the updated function
-from web.app import extract_player_scores_from_ocr
+from web.services.ocr import extract_player_scores_from_ocr
 
 def test_extract_function():
     """Test the extract_player_scores_from_ocr function with PaddleOCR"""
