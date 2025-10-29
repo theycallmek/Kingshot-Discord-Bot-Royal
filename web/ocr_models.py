@@ -13,6 +13,7 @@ class OCRPlayerMapping(SQLModel, table=True):
     Maps OCR-detected player names to FIDs
     This is the core table for matching players from screenshots
     """
+
     __tablename__ = "ocr_player_mapping"
 
     mapping_id: Optional[int] = Field(default=None, primary_key=True)
@@ -31,6 +32,7 @@ class OCREventData(SQLModel, table=True):
     Stores event-specific data extracted from OCR (scores, ranks, times, etc.)
     Links player names to their performance in specific events
     """
+
     __tablename__ = "ocr_event_data"
 
     event_data_id: Optional[int] = Field(default=None, primary_key=True)
@@ -44,7 +46,7 @@ class OCREventData(SQLModel, table=True):
 
     # Event performance data
     ranking: Optional[int] = None  # Player's rank in event
-    rank_inferred: bool = False  # Whether rank was inferred vs OCR detected
+    rank_inferred: bool = False  # Whether rank was inferred vs. OCR detected
     score: Optional[int] = None  # Generic score field
     damage_points: Optional[int] = None  # For damage-based events
     time_value: Optional[str] = None  # For time-based events (stored as string)
@@ -55,9 +57,15 @@ class OCREventData(SQLModel, table=True):
     processing_session: str  # Session ID for batch processing tracking
 
     # Verification tracking (consensus from multiple uploads)
-    verification_count: int = 1  # Number of independent sessions that detected same score
-    verified_sessions: Optional[str] = None  # Comma-separated list of session IDs that verified this data
-    data_confidence: float = 1.0  # Confidence multiplier based on verification (1.0 = single source, increases with verifications)
+    verification_count: int = (
+        1  # Number of independent sessions that detected the same score
+    )
+    verified_sessions: Optional[str] = (
+        None  # Comma-separated list of session IDs that verified this data
+    )
+    data_confidence: float = (
+        1.0  # Confidence multiplier based on verification (1.0 = single source, increases with verifications)
+    )
 
     # Timestamps
     extracted_at: datetime
@@ -69,6 +77,7 @@ class UserAvatarCache(SQLModel, table=True):
     Caches player avatar URLs fetched from the game API
     Prevents excessive API calls due to rate limiting (2 seconds between requests)
     """
+
     __tablename__ = "user_avatar_cache"
 
     fid: int = Field(primary_key=True)  # Player FID

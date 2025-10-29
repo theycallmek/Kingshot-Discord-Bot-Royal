@@ -443,6 +443,8 @@ class Alliance(commands.Cog):
                     )
 
                     async def alliance_check_callback(select_interaction: discord.Interaction):
+                        if qa is None:
+                            qa = queued_alliances
                         try:
                             selected_value = select_interaction.data["values"][0]
                             control_cog = self.bot.get_cog('Control')

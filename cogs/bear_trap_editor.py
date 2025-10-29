@@ -773,6 +773,7 @@ class PlainEditorView(discord.ui.View):
 
                 await self.cog.update_notification(self)
                 await self.update_embed(interaction)
+                return None
 
             button = discord.ui.Button(label=label, style=discord.ButtonStyle.secondary)
             button.callback = callback

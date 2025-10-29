@@ -11,6 +11,7 @@ from web.core.config import templates, WEB_DASHBOARD_PASSWORD
 
 router = APIRouter()
 
+
 def is_authenticated(request: Request) -> bool:
     """
     Checks if a user is authenticated by verifying the session.
@@ -23,10 +24,12 @@ def is_authenticated(request: Request) -> bool:
     """
     return "authenticated" in request.session
 
+
 @router.get("/login", response_class=HTMLResponse)
 async def login_get(request: Request):
     """Serves the login page."""
     return templates.TemplateResponse("login.html", {"request": request})
+
 
 @router.post("/login", response_class=HTMLResponse)
 async def login_post(request: Request, password: str = Form(...)):
@@ -45,7 +48,10 @@ async def login_post(request: Request, password: str = Form(...)):
         request.session["authenticated"] = True
         return RedirectResponse(url="/", status_code=303)
     else:
-        return templates.TemplateResponse("login.html", {"request": request, "error": "Invalid password"})
+        return templates.TemplateResponse(
+            "login.html", {"request": request, "error": "Invalid password"}
+        )
+
 
 @router.get("/logout")
 async def logout(request: Request):

@@ -1,7 +1,8 @@
 from typing import Optional, List
 from sqlmodel import Field, SQLModel, Relationship
-from pydantic import ConfigDict
+from pydantic import BaseModel
 from datetime import datetime, time
+
 
 class GiftCode(SQLModel, table=True):
     __tablename__ = "gift_codes"
@@ -10,6 +11,7 @@ class GiftCode(SQLModel, table=True):
     validation_status: Optional[str] = None
 
     users: List["UserGiftCode"] = Relationship(back_populates="gift")
+
 
 class User(SQLModel, table=True):
     __tablename__ = "users"
@@ -22,6 +24,7 @@ class User(SQLModel, table=True):
 
     gift_codes: List["UserGiftCode"] = Relationship(back_populates="user")
 
+
 class UserGiftCode(SQLModel, table=True):
     __tablename__ = "user_giftcodes"
     fid: int = Field(foreign_key="users.fid", primary_key=True)
@@ -31,6 +34,7 @@ class UserGiftCode(SQLModel, table=True):
     user: Optional["User"] = Relationship(back_populates="gift_codes")
     gift: Optional["GiftCode"] = Relationship(back_populates="users")
 
+
 class NicknameChange(SQLModel, table=True):
     __tablename__ = "nickname_changes"
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -39,6 +43,7 @@ class NicknameChange(SQLModel, table=True):
     new_nickname: str
     change_date: str
 
+
 class FurnaceChange(SQLModel, table=True):
     __tablename__ = "furnace_changes"
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -46,6 +51,7 @@ class FurnaceChange(SQLModel, table=True):
     old_furnace_lv: int
     new_furnace_lv: int
     change_date: str
+
 
 class AttendanceRecord(SQLModel, table=True):
     __tablename__ = "attendance_records"
@@ -65,6 +71,7 @@ class AttendanceRecord(SQLModel, table=True):
     marked_by_username: Optional[str] = None
     created_at: Optional[datetime] = None
 
+
 class BearNotificationEmbed(SQLModel, table=True):
     __tablename__ = "bear_notification_embeds"
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -81,12 +88,15 @@ class BearNotificationEmbed(SQLModel, table=True):
 
     notification: "BearNotification" = Relationship(back_populates="embeds")
 
+
 class NotificationDays(SQLModel, table=True):
     __tablename__ = "notification_days"
     notification_id: int = Field(foreign_key="bear_notifications.id", primary_key=True)
     weekday: str
 
     notification: "BearNotification" = Relationship(back_populates="notification_days")
+
+
 class BearNotification(SQLModel, table=True):
     __tablename__ = "bear_notifications"
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -107,7 +117,11 @@ class BearNotification(SQLModel, table=True):
     next_notification: Optional[datetime] = None
 
     embeds: List["BearNotificationEmbed"] = Relationship(back_populates="notification")
-    notification_days: Optional["NotificationDays"] = Relationship(back_populates="notification", sa_relationship_kwargs={'cascade': 'all, delete-orphan', 'uselist': False})
+    notification_days: Optional["NotificationDays"] = Relationship(
+        back_populates="notification",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan", "uselist": False},
+    )
+
 
 class Alliance(SQLModel, table=True):
     __tablename__ = "alliance_list"
@@ -115,7 +129,6 @@ class Alliance(SQLModel, table=True):
     name: str
     discord_server_id: int
 
-from pydantic import BaseModel
 
 class BearNotificationWithNickname(BaseModel):
     id: int
@@ -133,9 +146,10 @@ class BearNotificationWithNickname(BaseModel):
     class Config:
         arbitrary_types_allowed = True
 
-BearNotification.update_forward_refs()
-BearNotificationEmbed.update_forward_refs()
-NotificationDays.update_forward_refs()
-User.update_forward_refs()
-UserGiftCode.update_forward_refs()
-GiftCode.update_forward_refs()
+
+BearNotification.model_rebuild()
+BearNotificationEmbed.model_rebuild()
+NotificationDays.model_rebuild()
+User.model_rebuild()
+UserGiftCode.model_rebuild()
+GiftCode.model_rebuild()

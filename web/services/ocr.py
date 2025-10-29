@@ -13,21 +13,29 @@ from pathlib import Path
 from paddleocr import PaddleOCR
 from sqlmodel import Session, select
 from datetime import datetime, timedelta
+from typing import Optional, List, Dict, Any, Tuple
 
 from web.models import User, AttendanceRecord
 from web.ocr_models import OCRPlayerMapping, OCREventData
 
-# Initialize PaddleOCR reader (loaded once at startup)
-ocr_reader = None
+# Constants
+OCR_IMPORT_EVENT_TYPE = "OCR Import"
+OCR_SYSTEM_USER = "OCR_System"
+OCR_SYSTEM_USERNAME = "Automated OCR"
 
-def get_ocr_reader():
+# Initialize PaddleOCR reader (loaded once at startup)
+ocr_reader: Optional[PaddleOCR] = None
+
+
+def get_ocr_reader() -> PaddleOCR:
     """
     Initializes and returns a singleton PaddleOCR reader instance.
     """
     global ocr_reader
     if ocr_reader is None:
-        ocr_reader = PaddleOCR(lang='en')
+        ocr_reader = PaddleOCR(lang="en")
     return ocr_reader
+
 
 def preprocess_image_for_ocr(image_path: str) -> str:
     """
@@ -42,26 +50,30 @@ def preprocess_image_for_ocr(image_path: str) -> str:
     if not os.path.exists(image_path):
         raise FileNotFoundError(f"Image file not found: {image_path}")
     try:
-        with open(image_path, 'rb') as f:
+        with open(image_path, "rb") as f:
             file_bytes = np.frombuffer(f.read(), dtype=np.uint8)
         image = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
         if image is None:
             raise ValueError(f"Could not decode image from path: {image_path}")
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        thresh = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                                       cv2.THRESH_BINARY, 11, 2)
+        thresh = cv2.adaptiveThreshold(
+            gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2
+        )
         result = cv2.cvtColor(thresh, cv2.COLOR_GRAY2BGR)
-        ext = os.path.splitext(image_path)[1] or '.png'
+        ext = os.path.splitext(image_path)[1] or ".png"
         is_success, buffer = cv2.imencode(ext, result)
         if not is_success:
             raise ValueError(f"Could not encode preprocessed image: {image_path}")
-        with open(image_path, 'wb') as f:
+        with open(image_path, "wb") as f:
             f.write(buffer)
     except Exception as e:
         raise ValueError(f"Failed to preprocess image at {image_path}: {e}") from e
     return image_path
 
-def extract_player_scores_from_ocr(ocr_results: list, image_name: str) -> list:
+
+def extract_player_scores_from_ocr(
+    ocr_results: List[Any], image_name: str
+) -> List[Dict[str, Any]]:
     """
     Extracts player names, rankings, and scores from PaddleOCR results.
 
@@ -76,22 +88,26 @@ def extract_player_scores_from_ocr(ocr_results: list, image_name: str) -> list:
     if not ocr_results or not isinstance(ocr_results, list) or len(ocr_results) == 0:
         return player_data
     page_result = ocr_results[0]
-    if 'rec_texts' not in page_result or 'rec_scores' not in page_result:
+    if "rec_texts" not in page_result or "rec_scores" not in page_result:
         return player_data
-    texts = page_result['rec_texts']
-    scores = page_result['rec_scores']
-    polys = page_result.get('rec_polys', [])
+    texts = page_result["rec_texts"]
+    scores = page_result["rec_scores"]
+    polys = page_result.get("rec_polys", [])
     text_items = []
     for i, (text, confidence) in enumerate(zip(texts, scores)):
         poly = polys[i] if i < len(polys) else None
         text_items.append((text, confidence, poly))
     for i, (text, confidence, poly) in enumerate(text_items):
         player_name = text.strip()
-        if player_name.startswith('[DOAJ'):
-            player_name = '[DOA]' + player_name[5:]
-        elif player_name.startswith('[DOA') and len(player_name) > 4 and player_name[4] != ']':
-            player_name = '[DOA]' + player_name[4:]
-        if player_name.startswith('[DOA]') and confidence > 0.55:
+        if player_name.startswith("[DOAJ"):
+            player_name = "[DOA]" + player_name[5:]
+        elif (
+            player_name.startswith("[DOA")
+            and len(player_name) > 4
+            and player_name[4] != "]"
+        ):
+            player_name = "[DOA]" + player_name[4:]
+        if player_name.startswith("[DOA]") and confidence > 0.55:
             try:
                 full_player_name = player_name
                 if poly is not None and len(poly) > 0:
@@ -103,8 +119,16 @@ def extract_player_scores_from_ocr(ocr_results: list, image_name: str) -> list:
                                 try:
                                     text_y = float(p[:, 1].min())
                                     text_x_start = float(p[:, 0].min())
-                                    if abs(text_y - player_y) < 30 and text_x_start >= player_x_end - 10 and text_x_start < player_x_end + 200:
-                                        if not t.isdigit() and 'damage' not in t.lower() and 'point' not in t.lower():
+                                    if (
+                                        abs(text_y - player_y) < 30
+                                        and text_x_start >= player_x_end - 10
+                                        and text_x_start < player_x_end + 200
+                                    ):
+                                        if (
+                                            not t.isdigit()
+                                            and "damage" not in t.lower()
+                                            and "point" not in t.lower()
+                                        ):
                                             full_player_name += " " + t
                                             break
                                 except (ValueError, TypeError):
@@ -123,7 +147,10 @@ def extract_player_scores_from_ocr(ocr_results: list, image_name: str) -> list:
                                     if 1 <= int(t) <= 50:
                                         text_y = float(p[:, 1].min())
                                         text_x_max = float(p[:, 0].max())
-                                        if abs(text_y - player_y) < 50 and text_x_max < player_x:
+                                        if (
+                                            abs(text_y - player_y) < 50
+                                            and text_x_max < player_x
+                                        ):
                                             ranking = int(t)
                                             break
                                 except (ValueError, TypeError):
@@ -138,12 +165,19 @@ def extract_player_scores_from_ocr(ocr_results: list, image_name: str) -> list:
                             if p is not None and len(p) > 0:
                                 try:
                                     text_y_top = float(p[:, 1].min())
-                                    if text_y_top > player_y_bottom and text_y_top < player_y_bottom + 100:
-                                        if 'damage' in t.lower() and ('point' in t.lower() or ':' in t):
-                                            numbers = re.findall(r'[\d,]+', t)
+                                    if (
+                                        text_y_top > player_y_bottom
+                                        and text_y_top < player_y_bottom + 100
+                                    ):
+                                        if "damage" in t.lower() and (
+                                            "point" in t.lower() or ":" in t
+                                        ):
+                                            numbers = re.findall(r"[\d,]+", t)
                                             if numbers:
                                                 try:
-                                                    damage_points = int(numbers[-1].replace(',', ''))
+                                                    damage_points = int(
+                                                        numbers[-1].replace(",", "")
+                                                    )
                                                 except (ValueError, TypeError):
                                                     pass
                                             break
@@ -151,27 +185,30 @@ def extract_player_scores_from_ocr(ocr_results: list, image_name: str) -> list:
                                     continue
                     except (ValueError, TypeError, IndexError):
                         pass
-                player_data.append({
-                    'player_name': player_name,
-                    'raw_name': text,
-                    'ranking': ranking,
-                    'damage_points': damage_points,
-                    'confidence': confidence,
-                    'image_source': image_name
-                })
+                player_data.append(
+                    {
+                        "player_name": player_name,
+                        "raw_name": text,
+                        "ranking": ranking,
+                        "damage_points": damage_points,
+                        "confidence": confidence,
+                        "image_source": image_name,
+                    }
+                )
             except Exception as e:
                 print(f"[ERROR] Failed to process {player_name}: {e}")
     return player_data
 
+
 def match_and_store_scores(
-    player_data_list: list,
+    player_data_list: List[Dict[str, Any]],
     session_id: str,
     event_name: str,
     event_type: str,
     event_date: datetime,
     user_session: Session,
-    cache_session: Session
-) -> tuple:
+    cache_session: Session,
+) -> Tuple[int, List[Dict[str, Any]], List[Dict[str, Any]]]:
     """
     Matches OCR-extracted player data with database users and stores the results.
 
@@ -190,22 +227,24 @@ def match_and_store_scores(
     matched_players = []
     unmatched = []
     all_users = user_session.exec(select(User)).all()
-    users_by_nickname = {re.sub(r'\[.*?\]', '', user.nickname).strip().lower(): user for user in all_users}
+    users_by_nickname = {
+        re.sub(r"\[.*?\]", "", user.nickname).strip().lower(): user
+        for user in all_users
+    }
 
     for player_data in player_data_list:
-        player_name = player_data['player_name']
+        player_name = player_data["player_name"]
         matched = False
         player_fid = "0000000000"
         user_obj = None
-        extracted_nickname = re.sub(r'\[.*?\]', '', player_name).strip()
+        extracted_nickname = re.sub(r"\[.*?\]", "", player_name).strip()
         if extracted_nickname.lower() in users_by_nickname:
             user_obj = users_by_nickname[extracted_nickname.lower()]
             player_fid = str(user_obj.fid)
             matched = True
 
         existing_mapping = cache_session.exec(
-            select(OCRPlayerMapping)
-            .where(OCRPlayerMapping.player_name == player_name)
+            select(OCRPlayerMapping).where(OCRPlayerMapping.player_name == player_name)
         ).first()
 
         if existing_mapping:
@@ -214,28 +253,33 @@ def match_and_store_scores(
             existing_mapping.updated_at = datetime.now()
             if matched and existing_mapping.player_fid == "0000000000":
                 existing_mapping.player_fid = player_fid
-                existing_mapping.confidence = player_data['confidence']
+                existing_mapping.confidence = player_data["confidence"]
             cache_session.add(existing_mapping)
         else:
             mapping = OCRPlayerMapping(
                 player_name=player_name,
                 player_fid=player_fid,
-                confidence=player_data['confidence'],
+                confidence=player_data["confidence"],
                 first_seen=datetime.now(),
                 last_seen=datetime.now(),
                 times_seen=1,
                 created_at=datetime.now(),
-                updated_at=datetime.now()
+                updated_at=datetime.now(),
             )
             cache_session.add(mapping)
 
-        event_date_str = event_date.strftime('%Y-%m-%d')
+        event_date_str = event_date.strftime("%Y-%m-%d")
         existing_event = cache_session.exec(
             select(OCREventData)
             .where(OCREventData.event_name == event_name)
             .where(OCREventData.player_name == player_name)
-            .where(OCREventData.event_date >= datetime.strptime(event_date_str, '%Y-%m-%d'))
-            .where(OCREventData.event_date < datetime.strptime(event_date_str, '%Y-%m-%d') + timedelta(days=1))
+            .where(
+                OCREventData.event_date >= datetime.strptime(event_date_str, "%Y-%m-%d")
+            )
+            .where(
+                OCREventData.event_date
+                < datetime.strptime(event_date_str, "%Y-%m-%d") + timedelta(days=1)
+            )
         ).first()
 
         if not existing_event:
@@ -245,28 +289,32 @@ def match_and_store_scores(
                 event_date=event_date,
                 player_name=player_name,
                 player_fid=player_fid if matched else None,
-                ranking=player_data.get('ranking'),
+                ranking=player_data.get("ranking"),
                 rank_inferred=False,
                 score=None,
-                damage_points=player_data.get('damage_points'),
+                damage_points=player_data.get("damage_points"),
                 time_value=None,
-                ocr_confidence=player_data['confidence'],
-                image_source=player_data['image_source'],
+                ocr_confidence=player_data["confidence"],
+                image_source=player_data["image_source"],
                 processing_session=session_id,
                 verification_count=1,
                 verified_sessions=session_id,
                 data_confidence=1.0,
                 extracted_at=datetime.now(),
-                created_at=datetime.now()
+                created_at=datetime.now(),
             )
             cache_session.add(event_record)
         else:
-            new_damage = player_data.get('damage_points', 0)
-            new_confidence = player_data['confidence']
-            new_ranking = player_data.get('ranking')
+            new_damage = player_data.get("damage_points", 0)
+            new_confidence = player_data["confidence"]
+            new_ranking = player_data.get("ranking")
             should_update = False
 
-            verified_sessions_list = existing_event.verified_sessions.split(',') if existing_event.verified_sessions else []
+            verified_sessions_list = (
+                existing_event.verified_sessions.split(",")
+                if existing_event.verified_sessions
+                else []
+            )
             is_new_verification = session_id not in verified_sessions_list
 
             damage_tolerance = 1000
@@ -275,13 +323,19 @@ def match_and_store_scores(
                 damage_diff = abs(new_damage - existing_event.damage_points)
                 damage_matches = damage_diff <= damage_tolerance
 
-            ranking_matches = new_ranking == existing_event.ranking if new_ranking and existing_event.ranking else False
+            ranking_matches = (
+                new_ranking == existing_event.ranking
+                if new_ranking and existing_event.ranking
+                else False
+            )
 
             if is_new_verification and (damage_matches or ranking_matches):
                 verified_sessions_list.append(session_id)
-                existing_event.verified_sessions = ','.join(verified_sessions_list)
+                existing_event.verified_sessions = ",".join(verified_sessions_list)
                 existing_event.verification_count = len(verified_sessions_list)
-                existing_event.data_confidence = min(2.0, 1.0 + (0.2 * (existing_event.verification_count - 1)))
+                existing_event.data_confidence = min(
+                    2.0, 1.0 + (0.2 * (existing_event.verification_count - 1))
+                )
                 should_update = True
 
             if new_damage and new_damage > (existing_event.damage_points or 0):
@@ -293,29 +347,40 @@ def match_and_store_scores(
                 existing_event.ranking = new_ranking
                 should_update = True
 
-            if new_ranking and existing_event.ranking and new_ranking < existing_event.ranking:
+            if (
+                new_ranking
+                and existing_event.ranking
+                and new_ranking < existing_event.ranking
+            ):
                 existing_event.ranking = new_ranking
                 should_update = True
 
             if new_confidence > existing_event.ocr_confidence:
                 existing_event.ocr_confidence = new_confidence
-                existing_event.image_source = player_data['image_source']
+                existing_event.image_source = player_data["image_source"]
                 should_update = True
 
             if should_update:
                 cache_session.add(existing_event)
 
         if matched:
-            player_data['player_fid'] = player_fid
-            player_data['user'] = user_obj
+            player_data["player_fid"] = player_fid
+            player_data["user"] = user_obj
             matched_players.append(player_data)
         else:
-            player_data['player_fid'] = player_fid
+            player_data["player_fid"] = player_fid
             unmatched.append(player_data)
 
     return len(matched_players), matched_players, unmatched
 
-def mark_attendance_from_scores(matched_players, unmatched_players, event_name, ocr_session_id, attendance_session: Session):
+
+def mark_attendance_from_scores(
+    matched_players: List[Dict[str, Any]],
+    unmatched_players: List[Dict[str, Any]],
+    event_name: str,
+    ocr_session_id: str,
+    attendance_session: Session,
+) -> int:
     """
     Mark attendance for matched players only (unmatched players are tracked in OCR cache).
     Handles duplicates by keeping the highest damage score when a player appears multiple times.
@@ -328,8 +393,8 @@ def mark_attendance_from_scores(matched_players, unmatched_players, event_name, 
     with attendance_session as att_session:
         # Mark attendance for matched players (real users)
         for player_data in matched_players:
-            user = player_data['user']
-            new_damage = player_data.get('damage_points') or 0
+            user = player_data["user"]
+            new_damage = player_data.get("damage_points") or 0
 
             # Check if already exists
             existing = att_session.exec(
@@ -343,7 +408,7 @@ def mark_attendance_from_scores(matched_players, unmatched_players, event_name, 
                 attendance = AttendanceRecord(
                     session_id=session_id,
                     session_name=event_name,
-                    event_type="OCR Import",
+                    event_type=OCR_IMPORT_EVENT_TYPE,
                     event_date=event_date,
                     player_id=str(user.fid),
                     player_name=user.nickname,
@@ -352,9 +417,9 @@ def mark_attendance_from_scores(matched_players, unmatched_players, event_name, 
                     status="present",
                     points=new_damage,
                     marked_at=datetime.now(),
-                    marked_by="OCR_System",
-                    marked_by_username="Automated OCR",
-                    created_at=datetime.now()
+                    marked_by=OCR_SYSTEM_USER,
+                    marked_by_username=OCR_SYSTEM_USERNAME,
+                    created_at=datetime.now(),
                 )
                 att_session.add(attendance)
                 marked_count += 1
