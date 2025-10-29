@@ -125,6 +125,10 @@ class BearNotificationWithNickname(BaseModel):
     repeat_enabled: bool
     repeat_minutes: str
     notification_days: Optional[NotificationDays] = None
+    hour: int
+    minute: int
+    is_enabled: int
+    embeds: List[BearNotificationEmbed] = []
 
     class Config:
         arbitrary_types_allowed = True

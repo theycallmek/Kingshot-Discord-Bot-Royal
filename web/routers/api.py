@@ -8,26 +8,38 @@ typically return JSON responses.
 
 from fastapi import APIRouter, Depends, Body, UploadFile, File, Form, Request
 from fastapi.responses import JSONResponse, StreamingResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from sqlmodel import select
-from typing import List, Optional
-from datetime import datetime
+from typing import List, Optional, Tuple
+from datetime import datetime, timedelta
+from collections import defaultdict
 import tempfile
 from pathlib import Path
 from pydantic import BaseModel
+import pytz
+import json
+import ssl
+import aiohttp
+import asyncio
+import hashlib
+import os
 
-def parse_player_name(player_name: str) -> (str, str):
+def parse_player_name(player_name: str) -> Tuple[str, str]:
     """Parses a player name to extract the alliance tag and username."""
     parts = player_name.split(']', 1)
     if len(parts) == 2:
         return parts[0][1:], parts[1].strip()
     return 'N/A', player_name.strip()
 
-from web.core.database import get_attendance_session, get_cache_session, get_users_session, get_beartime_session
-from web.models import BearNotification, BearNotificationEmbed, NotificationDays
+from web.core.database import (
+    get_attendance_session, get_cache_session, get_users_session, get_beartime_session,
+    users_engine, cache_engine
+)
+from web.core.config import API_SECRET
+from web.models import BearNotification, BearNotificationEmbed, NotificationDays, User
 from web.ocr_models import OCREventData, UserAvatarCache
 from web.services.ocr import get_ocr_reader, preprocess_image_for_ocr, extract_player_scores_from_ocr, match_and_store_scores, mark_attendance_from_scores
-from .auth import is_authenticated
+from auth import is_authenticated
 
 router = APIRouter()
 

@@ -44,13 +44,15 @@ a {
     background-color: var(--surface-color);
     position: sticky;
     top: 0;
-    height: auto;
+    height: 100vh;
+    max-height: 100vh;
     padding: 1rem;
     border-right: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
     flex-shrink: 0;
     z-index: 100;
+    overflow-y: auto;
 }
 
 .sidebar h2 {
@@ -66,8 +68,33 @@ a {
     list-style: none;
     padding: 0;
     margin: 0;
-    flex-grow: 0;
-    flex-shrink: 0;
+    flex-grow: 1;
+    flex-shrink: 1;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+/* Custom scrollbar for sidebar */
+.sidebar::-webkit-scrollbar,
+.sidebar ul::-webkit-scrollbar {
+    width: 8px;
+}
+
+.sidebar::-webkit-scrollbar-track,
+.sidebar ul::-webkit-scrollbar-track {
+    background: var(--background-color);
+    border-radius: 4px;
+}
+
+.sidebar::-webkit-scrollbar-thumb,
+.sidebar ul::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover,
+.sidebar ul::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-color);
 }
 
 .sidebar ul li a {

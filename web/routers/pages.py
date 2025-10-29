@@ -23,7 +23,7 @@ from web.core.database import (
 from web.models import User, FurnaceChange, Alliance, NicknameChange, GiftCode, UserGiftCode
 from web.ocr_models import OCREventData, UserAvatarCache
 from web.services.plotting import generate_town_center_graphs, generate_bear_trap_graph
-from .auth import is_authenticated
+from auth import is_authenticated
 import json
 import plotly
 import plotly.graph_objects as go
@@ -41,37 +41,14 @@ def get_alliance_nicknames(alliance_session: Session) -> dict:
 @router.get("/", response_class=HTMLResponse)
 async def read_root(
     request: Request,
-    authenticated: bool = Depends(is_authenticated),
-    users_session: Session = Depends(get_users_session),
-    changes_session: Session = Depends(get_changes_session),
-    alliance_session: Session = Depends(get_alliance_session),
-    cache_session: Session = Depends(get_cache_session)
+    authenticated: bool = Depends(is_authenticated)
 ):
-    """Serves the main dashboard page with data visualizations."""
+    """Serves the main dashboard page with a welcome message."""
     if not authenticated:
         return RedirectResponse(url="/login", status_code=303)
 
-    users = users_session.exec(select(User)).all()
-    furnace_changes = changes_session.exec(select(FurnaceChange)).all()
-    all_alliances = alliance_session.exec(select(Alliance)).all()
-    alliance_nicknames = {str(a.alliance_id): a.name for a in all_alliances}
-
-    tc_graphs = generate_town_center_graphs(users, furnace_changes, all_alliances, alliance_nicknames)
-
-    thirty_days_ago = datetime.now() - timedelta(days=30)
-    bear_trap_query = (
-        select(OCREventData)
-        .where(OCREventData.event_type == 'Bear Trap')
-        .where(OCREventData.event_date >= thirty_days_ago)
-        .where(OCREventData.damage_points.isnot(None))
-    )
-    bear_trap_data = cache_session.exec(bear_trap_query).all()
-    graph_bear_trap_json = generate_bear_trap_graph(bear_trap_data)
-
     return templates.TemplateResponse("dashboard.html", {
-        "request": request,
-        **tc_graphs,
-        "graph_bear_trap_json": graph_bear_trap_json
+        "request": request
     })
 
 @router.get("/members", response_class=HTMLResponse)
@@ -188,7 +165,11 @@ async def read_events(
             next_notification=event.next_notification,
             repeat_enabled=event.repeat_enabled,
             repeat_minutes=event.repeat_minutes,
-            notification_days=event.notification_days
+            notification_days=event.notification_days,
+            hour=event.hour,
+            minute=event.minute,
+            is_enabled=event.is_enabled,
+            embeds=event.embeds
         )
 
         occurrence = event.next_notification
@@ -316,15 +297,34 @@ async def read_data(
     request: Request,
     authenticated: bool = Depends(is_authenticated),
     users_session: Session = Depends(get_users_session),
+    changes_session: Session = Depends(get_changes_session),
     alliance_session: Session = Depends(get_alliance_session),
     cache_session: Session = Depends(get_cache_session)
 ):
-    """Serves the data analysis page with additional graphs."""
+    """Serves the data analysis page with all graphs and visualizations."""
     if not authenticated:
         return RedirectResponse(url="/login", status_code=303)
 
-    # --- Furnace Level Distribution Histogram ---
     users = users_session.exec(select(User)).all()
+    furnace_changes = changes_session.exec(select(FurnaceChange)).all()
+    all_alliances = alliance_session.exec(select(Alliance)).all()
+    alliance_nicknames = {str(a.alliance_id): a.name for a in all_alliances}
+
+    # --- Town Center Graphs (from dashboard) ---
+    tc_graphs = generate_town_center_graphs(users, furnace_changes, all_alliances, alliance_nicknames)
+
+    # --- Bear Trap Graph (from dashboard) ---
+    thirty_days_ago = datetime.now() - timedelta(days=30)
+    bear_trap_query = (
+        select(OCREventData)
+        .where(OCREventData.event_type == 'Bear Trap')
+        .where(OCREventData.event_date >= thirty_days_ago)
+        .where(OCREventData.damage_points.isnot(None))
+    )
+    bear_trap_data = cache_session.exec(bear_trap_query).all()
+    graph_bear_trap_json = generate_bear_trap_graph(bear_trap_data)
+
+    # --- Furnace Level Distribution Histogram ---
     furnace_levels = [user.furnace_lv for user in users if user.furnace_lv is not None]
 
     fig_hist = go.Figure(data=[go.Histogram(x=furnace_levels, nbinsx=20)])
@@ -343,7 +343,6 @@ async def read_data(
     graph_hist_json = json.dumps(fig_hist, cls=plotly.utils.PlotlyJSONEncoder)
 
     # --- Alliance Member Count ---
-    alliance_nicknames = get_alliance_nicknames(alliance_session)
     alliance_counts = defaultdict(int)
     for user in users:
         if user.alliance:
@@ -367,16 +366,7 @@ async def read_data(
 
     graph_bar_json = json.dumps(fig_bar, cls=plotly.utils.PlotlyJSONEncoder)
 
-    # --- Bear Trap Damage ---
-    thirty_days_ago = datetime.now() - timedelta(days=30)
-    bear_trap_query = (
-        select(OCREventData)
-        .where(OCREventData.event_type == 'Bear Trap')
-        .where(OCREventData.event_date >= thirty_days_ago)
-        .where(OCREventData.damage_points.isnot(None))
-    )
-    bear_trap_data = cache_session.exec(bear_trap_query).all()
-
+    # --- Bear Trap Damage (Top 15) ---
     player_damage = defaultdict(int)
     for record in bear_trap_data:
         player_damage[record.player_name] += record.damage_points
@@ -385,7 +375,7 @@ async def read_data(
     player_names = [item[0] for item in sorted_players]
     damage_values = [item[1] for item in sorted_players]
 
-    fig_bear_trap = go.Figure(data=[go.Bar(
+    fig_bear_trap_top = go.Figure(data=[go.Bar(
         x=player_names,
         y=damage_values,
         marker=dict(
@@ -396,7 +386,7 @@ async def read_data(
         hovertemplate='<b>%{x}</b><br>Damage: %{y}<extra></extra>'
     )])
 
-    fig_bear_trap.update_layout(
+    fig_bear_trap_top.update_layout(
         title='Top 15 Bear Trap Damage Dealers (Last 30 Days)',
         xaxis_title='Player',
         yaxis_title='Total Damage',
@@ -407,7 +397,7 @@ async def read_data(
         margin=dict(l=40, r=10, t=80, b=40),
         xaxis={'categoryorder':'total descending'}
     )
-    graph_bear_trap_json = json.dumps(fig_bear_trap, cls=plotly.utils.PlotlyJSONEncoder)
+    graph_bear_trap_top_json = json.dumps(fig_bear_trap_top, cls=plotly.utils.PlotlyJSONEncoder)
 
     # --- Player Activity ---
     player_activity_query = select(OCRPlayerMapping)
@@ -433,8 +423,10 @@ async def read_data(
 
     return templates.TemplateResponse("data.html", {
         "request": request,
+        **tc_graphs,
+        "graph_bear_trap_json": graph_bear_trap_json,
         "graph_hist_json": graph_hist_json,
         "graph_bar_json": graph_bar_json,
-        "graph_bear_trap_json": graph_bear_trap_json,
+        "graph_bear_trap_top_json": graph_bear_trap_top_json,
         "graph_activity_json": graph_activity_json
     })
