@@ -77,6 +77,22 @@
         background-color: var(--surface-color);
         border: 1px solid var(--border-color);
         position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .grid-cell::before {
+        content: attr(data-coords);
+        font-size: 0.5rem;
+        color: var(--text-color);
+        opacity: 0.45;
+        font-weight: 600;
+        transform: rotate(-45deg);
+        text-shadow: 0 0 2px rgba(0, 0, 0, 0.8);
+        pointer-events: none;
+        white-space: nowrap;
+        z-index: 0;
     }
 
     .grid-cell.center-zone {
@@ -84,6 +100,17 @@
         border: none;
         position: relative;
         z-index: 2;
+    }
+
+    .grid-cell.center-zone:hover {
+        background-color: rgba(255, 215, 0, 0.1);
+        cursor: pointer;
+        border: 1px solid rgba(255, 215, 0, 0.5);
+    }
+
+    .grid-cell.center-zone.clickable-center:hover {
+        background-color: rgba(255, 215, 0, 0.2);
+        box-shadow: inset 0 0 8px rgba(255, 215, 0, 0.6);
     }
 
 
@@ -133,16 +160,16 @@
         right: 0;
         bottom: 0;
         left: 0;
-        background-image: url('../static/images/player-castle-icon.webp');
-        background-size: 80%;
+        background-image: var(--avatar-url, url('../static/images/player-castle-icon.webp'));
+        background-size: cover;
         background-position: center;
         background-repeat: no-repeat;
-        transform: rotate(-45deg);
         z-index: 0;
+        opacity: 0.9;
     }
 
     .player-card::before {
-        content: 'asdasd';
+        content: '';
         position: absolute;
         top: 0;
         right: 0;
@@ -153,12 +180,22 @@
         border-radius: 4px;
     }
 
+    .player-card-text-wrapper {
+        position: relative;
+        z-index: 2;
+        transform: rotate(-45deg);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+
     .player-card > div {
         position: relative;
         z-index: 2;
-        text-shad1ow: 0 0 3px rgba(0, 0, 0, 0.9), 1px 1px 2px rgba(0, 0, 0, 0.8);
-        transform: rotate(-45deg);
+        text-shadow: 0 0 3px rgba(0, 0, 0, 0.9), 1px 1px 2px rgba(0, 0, 0, 0.8);
         font-weight: 500;
+        white-space: nowrap;
     }
 
     .player-card.used {
@@ -314,12 +351,12 @@
         right: 0;
         bottom: 0;
         left: 0;
-        background-image: url('../static/images/player-castle-icon.webp');
-        background-size: 80%;
+        background-image: var(--avatar-url, url('../static/images/player-castle-icon.webp'));
+        background-size: cover;
         background-position: center;
         background-repeat: no-repeat;
-        transform: rotate(-45deg);
         z-index: 0;
+        opacity: 0.9;
     }
 
     .placed-player::before {
@@ -334,12 +371,22 @@
         border-radius: 4px;
     }
 
+    .placed-player-text-wrapper {
+        position: relative;
+        z-index: 2;
+        transform: rotate(-45deg);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+
     .placed-player > div {
         position: relative;
         z-index: 2;
         text-shadow: 0 0 3px rgba(0, 0, 0, 0.9), 1px 1px 2px rgba(0, 0, 0, 0.8);
-        transform: rotate(-45deg);
-        font-weight: 300;
+        font-weight: 600;
+        white-space: nowrap;
     }
 
     .placed-obstruction {
@@ -619,6 +666,76 @@
     let tcSortAscending = false; // Track TC sort direction
     let alphaSortAscending = true; // Track alpha sort direction
     let lastPlacedElement = null; // Track the last placed element for keyboard control
+    
+    // Base coordinate for the center 3x3 zone (bottom-right cell at grid position 8,8)
+    let baseCoordinate = { x: 101, y: 101 };
+    
+    // Helper function to update all grid coordinates
+    function updateGridCoordinates() {
+        const cells = grid.querySelectorAll('.grid-cell');
+        cells.forEach(cell => {
+            const row = parseInt(cell.dataset.row);
+            const col = parseInt(cell.dataset.col);
+            // Formula: baseCoord + (centerCellPos - cellPos)
+            // Center cell is at (8, 8), so offset = 8 - pos
+            // X and Y axes are flipped: X uses row, Y uses col
+            const worldX = baseCoordinate.x + (8 - row);
+            const worldY = baseCoordinate.y + (8 - col);
+            cell.dataset.coords = `${worldX},${worldY}`;
+        });
+    }
+    // Helper function to calculate coordinates for a placed player (2x2 square)
+    // Coordinate is based on bottom-right cell of the 2x2 square
+    function getPlacedPlayerCoords(row, col) {
+        // Bottom-right cell is at (row+1, col+1)
+        const bottomRightRow = row + 1;
+        const bottomRightCol = col + 1;
+        // Use same formula as grid cells: baseCoord + (8 - pos)
+        const worldX = baseCoordinate.x + (8 - bottomRightRow);
+        const worldY = baseCoordinate.y + (8 - bottomRightCol);
+        return { x: worldX, y: worldY };
+    }
+
+    // Helper function to update all placed player coordinates
+    function updateAllPlacedPlayerCoords() {
+        const placedPlayers = grid.querySelectorAll('.placed-player');
+        placedPlayers.forEach(player => {
+            const row = parseInt(player.dataset.row);
+            const col = parseInt(player.dataset.col);
+            const coords = getPlacedPlayerCoords(row, col);
+            const coordsDiv = player.querySelector('.player-coords');
+            if (coordsDiv) {
+                coordsDiv.textContent = `(${coords.x}, ${coords.y})`;
+            }
+        });
+    }
+
+    
+
+    // Handle click on center coordinate cell
+    function handleCenterClick(e) {
+        e.stopPropagation();
+        
+        const xInput = prompt('Enter X coordinate for center 3x3 zone:', baseCoordinate.x);
+        if (xInput === null) return; // User cancelled
+        
+        const yInput = prompt('Enter Y coordinate for center 3x3 zone:', baseCoordinate.y);
+        if (yInput === null) return; // User cancelled
+        
+        const x = parseInt(xInput);
+        const y = parseInt(yInput);
+        
+        if (isNaN(x) || isNaN(y)) {
+            alert('Please enter valid numbers');
+            return;
+        }
+        
+        // Update base coordinate and recalculate all cells and placed players
+        baseCoordinate.x = x;
+        baseCoordinate.y = y;
+        updateGridCoordinates();
+        updateAllPlacedPlayerCoords();
+    }
 
     // Get grid dimensions based on screen size
     function getGridDimensions() {
@@ -655,9 +772,22 @@
             cell.dataset.row = row;
             cell.dataset.col = col;
 
+            // Calculate world coordinates: baseCoord + (centerCellPos - cellPos)
+            // Center cell is at (8, 8)
+            // X and Y axes are flipped: X uses row, Y uses col
+            const worldX = baseCoordinate.x + (8 - row);
+            const worldY = baseCoordinate.y + (8 - col);
+            cell.dataset.coords = `${worldX},${worldY}`;
+
             // Mark center 3x3 zone (rows 6-8, cols 6-8)
             if (row >= 6 && row <= 8 && col >= 6 && col <= 8) {
                 cell.classList.add('center-zone');
+                
+                // Make only the bottom-right cell (8,8) of the center zone clickable
+                if (row === 8 && col === 8) {
+                    cell.classList.add('clickable-center');
+                    cell.addEventListener('click', handleCenterClick);
+                }
             }
 
             // Add directional buttons on specific center zone cells (2, 4, 6, 8)
@@ -732,6 +862,11 @@
                 card.dataset.type = 'player';
                 card.dataset.nickname = user.nickname;
                 card.dataset.furnaceLv = user.furnace_lv;
+                card.dataset.avatarUrl = user.avatar_url || '';
+                // Set avatar as background using CSS custom property
+                if (user.avatar_url) {
+                    card.style.setProperty('--avatar-url', `url('${user.avatar_url}')`);
+                }
 
                 // Check if this player has already been placed
                 const playerKey = `${currentAllianceId}_${user.nickname}`;
@@ -744,19 +879,24 @@
                     card.addEventListener('dragend', handleDragEnd);
                 }
 
-                // Display nickname and TC level
-                const nameDiv = document.createElement('div');
-                nameDiv.textContent = user.nickname;
-                nameDiv.style.fontSize = '0.65rem';
-
+                // Display TC level and nickname (TC first, then name)
                 const tcDiv = document.createElement('div');
                 tcDiv.textContent = `TC${user.furnace_lv}`;
                 tcDiv.style.fontSize = '0.6rem';
-                tcDiv.style.marginTop = '2px';
                 tcDiv.style.opacity = '0.8';
+                tcDiv.style.marginBottom = '-1px';
 
-                card.appendChild(nameDiv);
-                card.appendChild(tcDiv);
+                const nameDiv = document.createElement('div');
+                nameDiv.textContent = user.nickname;
+                nameDiv.style.fontSize = '0.65rem';
+                nameDiv.style.marginTop = '0px';
+
+                // Create a text wrapper to keep text vertically aligned
+                const textWrapper = document.createElement('div');
+                textWrapper.className = 'player-card-text-wrapper';
+                textWrapper.appendChild(tcDiv);
+                textWrapper.appendChild(nameDiv);
+                card.appendChild(textWrapper);
 
                 playerCardsContainer.appendChild(card);
             });
@@ -911,6 +1051,12 @@
                 draggedElement.dataset.col = col;
                 draggedElement.style.left = `calc(${dims.padding} + ${col} * (${dims.cellSize}px + ${dims.gap}px))`;
                 draggedElement.style.top = `calc(${dims.padding} + ${row} * (${dims.cellSize}px + ${dims.gap}px))`;
+                // Update coordinates
+                const coords = getPlacedPlayerCoords(row, col);
+                const coordsDiv = draggedElement.querySelector('.player-coords');
+                if (coordsDiv) {
+                    coordsDiv.textContent = `(${coords.x}, ${coords.y})`;
+                }
                 setActiveElement(draggedElement);
             } else {
                 // Create new placed player element
@@ -921,21 +1067,41 @@
                 placed.dataset.col = col;
                 placed.dataset.nickname = draggedElement.dataset.nickname;
                 placed.dataset.furnaceLv = draggedElement.dataset.furnaceLv;
+                placed.dataset.avatarUrl = draggedElement.dataset.avatarUrl;
                 placed.draggable = true;
+                // Set avatar as background using CSS custom property
+                if (draggedElement.dataset.avatarUrl) {
+                    placed.style.setProperty('--avatar-url', `url('${draggedElement.dataset.avatarUrl}')`);
+                }
 
-                // Display nickname and TC level
-                const nameDiv = document.createElement('div');
-                nameDiv.textContent = draggedElement.dataset.nickname;
-                nameDiv.style.fontSize = '0.65rem';
-
+                // Display TC level, nickname, and coordinates (TC first, then name, then coords)
                 const tcDiv = document.createElement('div');
                 tcDiv.textContent = `TC${draggedElement.dataset.furnaceLv}`;
                 tcDiv.style.fontSize = '0.6rem';
-                tcDiv.style.marginTop = '2px';
                 tcDiv.style.opacity = '0.8';
+                tcDiv.style.marginBottom = '-1px';
 
-                placed.appendChild(nameDiv);
-                placed.appendChild(tcDiv);
+                const nameDiv = document.createElement('div');
+                nameDiv.textContent = draggedElement.dataset.nickname;
+                nameDiv.style.fontSize = '0.65rem';
+                nameDiv.style.marginTop = '0px';
+                nameDiv.style.marginBottom = '-1px';
+
+                const coordsDiv = document.createElement('div');
+                coordsDiv.className = 'player-coords';
+                coordsDiv.style.fontSize = '0.5rem';
+                coordsDiv.style.marginTop = '0px';
+                coordsDiv.style.opacity = '0.7';
+                const coords = getPlacedPlayerCoords(row, col);
+                coordsDiv.textContent = `(${coords.x}, ${coords.y})`;
+
+                // Create a text wrapper to keep text vertically aligned
+                const textWrapper = document.createElement('div');
+                textWrapper.className = 'placed-player-text-wrapper';
+                textWrapper.appendChild(tcDiv);
+                textWrapper.appendChild(nameDiv);
+                textWrapper.appendChild(coordsDiv);
+                placed.appendChild(textWrapper);
 
                 // Position: 2x2 cells
                 const dims = getGridDimensions();
@@ -992,6 +1158,12 @@
                 draggedElement.dataset.col = col;
                 draggedElement.style.left = `calc(${dims.padding} + ${col} * (${dims.cellSize}px + ${dims.gap}px))`;
                 draggedElement.style.top = `calc(${dims.padding} + ${row} * (${dims.cellSize}px + ${dims.gap}px))`;
+                // Update coordinates
+                const coords = getPlacedPlayerCoords(row, col);
+                const coordsDiv = draggedElement.querySelector('.player-coords');
+                if (coordsDiv) {
+                    coordsDiv.textContent = `(${coords.x}, ${coords.y})`;
+                }
                 setActiveElement(draggedElement);
             } else {
                 // Create new placed obstruction element
@@ -1110,6 +1282,15 @@
         lastPlacedElement.dataset.col = newCol;
         lastPlacedElement.style.left = `calc(${dims.padding} + ${newCol} * (${dims.cellSize}px + ${dims.gap}px))`;
         lastPlacedElement.style.top = `calc(${dims.padding} + ${newRow} * (${dims.cellSize}px + ${dims.gap}px))`;
+
+        // Update coordinates if this is a player
+        if (type === 'player') {
+            const coords = getPlacedPlayerCoords(newRow, newCol);
+            const coordsDiv = lastPlacedElement.querySelector('.player-coords');
+            if (coordsDiv) {
+                coordsDiv.textContent = `(${coords.x}, ${coords.y})`;
+            }
+        }
     }
 
     function handlePlacedDragStart(e) {
@@ -1210,6 +1391,15 @@
         lastPlacedElement.dataset.col = newCol;
         lastPlacedElement.style.left = `calc(${dims.padding} + ${newCol} * (${dims.cellSize}px + ${dims.gap}px))`;
         lastPlacedElement.style.top = `calc(${dims.padding} + ${newRow} * (${dims.cellSize}px + ${dims.gap}px))`;
+
+        // Update coordinates if this is a player
+        if (type === 'player') {
+            const coords = getPlacedPlayerCoords(newRow, newCol);
+            const coordsDiv = lastPlacedElement.querySelector('.player-coords');
+            if (coordsDiv) {
+                coordsDiv.textContent = `(${coords.x}, ${coords.y})`;
+            }
+        }
 
         // Flash the corresponding direction button
         if (direction) {

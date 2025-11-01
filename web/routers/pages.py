@@ -106,6 +106,7 @@ async def bear_trap_map(
     authenticated: bool = Depends(is_authenticated),
     session: Session = Depends(get_users_session),
     alliance_session: Session = Depends(get_alliance_session),
+    cache_session: Session = Depends(get_cache_session),
 ):
     """Serves the bear trap map page."""
     if not authenticated:
@@ -114,13 +115,17 @@ async def bear_trap_map(
     alliances = alliance_session.exec(select(Alliance)).all()
     users = session.exec(select(User)).all()
 
+    # Fetch avatar cache
+    avatar_cache = cache_session.exec(select(UserAvatarCache)).all()
+    avatar_map = {cache.fid: cache.avatar_url for cache in avatar_cache}
+
     users_by_alliance = {}
     for user in users:
         alliance_id = str(user.alliance)
         if alliance_id not in users_by_alliance:
             users_by_alliance[alliance_id] = []
         users_by_alliance[alliance_id].append(
-            {"nickname": user.nickname, "fid": user.fid, "furnace_lv": user.furnace_lv}
+            {"nickname": user.nickname, "fid": user.fid, "furnace_lv": user.furnace_lv, "avatar_url": avatar_map.get(user.fid)}
         )
 
     return templates.TemplateResponse(
@@ -411,8 +416,8 @@ async def read_data(
     fig_hist = go.Figure(data=[go.Histogram(x=furnace_levels, nbinsx=20)])
 
     fig_hist.update_layout(
-        title="Furnace Level Distribution",
-        xaxis_title="Furnace Level",
+        title="Town Center Level Distribution",
+        xaxis_title="Town Center",
         yaxis_title="Number of Players",
         template="plotly_dark",
         plot_bgcolor="#1e1e1e",
