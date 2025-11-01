@@ -194,6 +194,143 @@
         outline: none;
         border-color: #00a8ff;
     }
+
+    /* Calendar header layout */
+    .calendar-header {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 0.75rem !important;
+    }
+
+    .month-nav-row {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 100% !important;
+        gap: 1rem;
+    }
+
+    .controls-row {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 100% !important;
+        flex-wrap: nowrap !important;
+        gap: 0.5rem;
+    }
+
+    /* Month navigation buttons */
+    .month-nav-btn {
+        transition: all 0.2s ease;
+    }
+
+    .month-nav-btn:hover {
+        color: var(--primary-color) !important;
+        transform: scale(1.2);
+    }
+
+    /* Responsive styles for smaller screens */
+    @media (max-width: 768px) {
+        .month-name {
+            font-size: 1.4rem;
+        }
+
+        .month-nav-btn {
+            font-size: 1.4rem !important;
+        }
+
+        .calendar-header .add-event-button {
+            font-size: 0.65rem;
+            padding: 0.3rem 0.5rem;
+            white-space: nowrap;
+        }
+
+        #timezone-select {
+            font-size: 0.55rem !important;
+            padding: 0.2rem !important;
+            max-width: 110px;
+        }
+
+        #time-format-select {
+            font-size: 0.55rem !important;
+            padding: 0.2rem !important;
+            max-width: 70px;
+        }
+
+        .controls-row {
+            gap: 0.25rem !important;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .month-name {
+            font-size: 1.2rem;
+            white-space: nowrap;
+        }
+
+        .month-nav-btn {
+            font-size: 1.2rem !important;
+            padding: 0.3rem 0.5rem !important;
+        }
+
+        .calendar-header .add-event-button {
+            font-size: 0.65rem;
+            padding: 0.3rem 0.5rem;
+            white-space: nowrap;
+        }
+
+        #timezone-select {
+            font-size: 0.55rem !important;
+            padding: 0.15rem !important;
+            max-width: 95px;
+        }
+
+        #time-format-select {
+            font-size: 0.55rem !important;
+            padding: 0.15rem !important;
+            max-width: 60px;
+        }
+
+        .controls-row {
+            gap: 0.25rem !important;
+        }
+    }
+
+    @media (max-width: 380px) {
+        .month-name {
+            font-size: 1rem;
+        }
+
+        .month-nav-btn {
+            font-size: 1rem !important;
+            padding: 0.2rem 0.4rem !important;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+        }
+
+        #timezone-select {
+            font-size: 0.5rem !important;
+            padding: 0.15rem !important;
+            max-width: 85px;
+        }
+
+        #time-format-select {
+            font-size: 0.5rem !important;
+            padding: 0.15rem !important;
+            max-width: 55px;
+        }
+
+        .calendar-header .add-event-button {
+            font-size: 0.6rem;
+            padding: 0.25rem 0.45rem;
+        }
+
+        .controls-row {
+            gap: 0.2rem !important;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -201,8 +338,16 @@
 <h1>Events Calendar</h1>
 
 <div class="calendar">
-    <div class="calendar-header" style="display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;">
-        <div class="timezone-controls" style="display: flex; align-items: center; gap: 0.4rem; justify-self: start;">
+    <div class="calendar-header">
+        <!-- Month navigation row -->
+        <div class="month-nav-row">
+            <button id="prev-month-btn" class="month-nav-btn" data-year="{{ prev_year }}" data-month="{{ prev_month }}" style="background: none; border: none; color: var(--text-color); font-size: 1.5rem; cursor: pointer; padding: 0.25rem 0.5rem;">&lt;</button>
+            <span class="month-name" data-full-date="{{ display_date.strftime('%B %Y') }}" data-short-date="{{ display_date.strftime('%b') }} '{{ display_date.strftime('%y') }}">{{ display_date.strftime('%B %Y') }}</span>
+            <button id="next-month-btn" class="month-nav-btn" data-year="{{ next_year }}" data-month="{{ next_month }}" style="background: none; border: none; color: var(--text-color); font-size: 1.5rem; cursor: pointer; padding: 0.25rem 0.5rem;">&gt;</button>
+        </div>
+
+        <!-- Controls row -->
+        <div class="controls-row">
             <select id="timezone-select" style="padding: 0.25rem; border-radius: 4px; border: 2px solid var(--border-color); background-color: var(--background-color); color: var(--text-color); font-size: 0.75rem;">
                 <option value="UTC">UTC (Server Time)</option>
                 <option value="America/New_York">Eastern Time (ET)</option>
@@ -223,9 +368,8 @@
                 <option value="24">24-Hour</option>
                 <option value="12">12-Hour</option>
             </select>
+            <button id="add-event-btn" class="add-event-button">Add Event</button>
         </div>
-        <span class="month-name">{{ today.strftime('%B %Y') }}</span>
-        <button id="add-event-btn" class="add-event-button" style="justify-self: end;">Add Event</button>
     </div>
     <div class="calendar-grid">
         <div class="day-name"><span class="full-day-name">Sunday</span><span class="short-day-name">Sun</span></div>
@@ -238,7 +382,7 @@
 
         {% for week in month_days %}
             {% for day in week %}
-                <div class="day {% if day.month != today.month %}other-month{% endif %} {% if day == today %}today{% endif %}">
+                <div class="day {% if day.month != display_date.month %}other-month{% endif %} {% if day == today %}today{% endif %}">
                     <div class="day-number">
                         {{ day.day }}
                     </div>
@@ -1459,6 +1603,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 const colorInput = form.querySelector('#edit_embed_color');
                 const initialColor = embed.color ? `#${embed.color.toString(16).padStart(6, '0')}` : '#42445a';
                 colorInput.value = initialColor;
+                
+                // Manually trigger the change event for the color select to update the UI
+                const colorSelect = form.querySelector('#edit_embed_color_select');
+                const matchingOption = Array.from(colorSelect.options).find(opt => opt.value.toUpperCase() === initialColor.toUpperCase());
+                if (matchingOption) {
+                    colorSelect.value = matchingOption.value;
+                } else {
+                    colorSelect.value = 'custom';
+                }
+                colorSelect.dispatchEvent(new Event('change'));
+
                 form.querySelector('#edit_embed_footer').value = embed.footer || '';
                 form.querySelector('#edit_embed_author').value = embed.author || '';
                 form.querySelector('#edit_embed_image_url').value = embed.image_url || '';
@@ -1570,6 +1725,31 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         submitForm(e.target, '/create_event');
     });
+
+    // Month navigation
+    document.querySelectorAll('.month-nav-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const year = e.currentTarget.dataset.year;
+            const month = e.currentTarget.dataset.month;
+            window.location.href = `/events?year=${year}&month=${month}`;
+        });
+    });
+
+    // Month name format switcher for mobile
+    const monthNameEl = document.querySelector('.month-name');
+    const updateMonthFormat = () => {
+        if (window.innerWidth <= 768) {
+            monthNameEl.textContent = monthNameEl.dataset.shortDate;
+        } else {
+            monthNameEl.textContent = monthNameEl.dataset.fullDate;
+        }
+    };
+
+    // Initial update
+    updateMonthFormat();
+
+    // Update on window resize
+    window.addEventListener('resize', updateMonthFormat);
 });
 </script>
 {% endblock %}

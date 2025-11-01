@@ -1148,7 +1148,7 @@
     </div>
 
     <div id="event-selection-container" class="form-group">
-        <label for="event-name-select">Event</label>
+        <label for="event-name-select">Recent Events (UTC)</label>
         <select id="event-name-select" class="custom-time-picker-select"></select>
     </div>
 
@@ -1297,6 +1297,18 @@
     </div>
 </div>
 
+<!-- Ghost Players Modal -->
+<div class="modal" id="ghostPlayersModal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3 class="modal-title">👻 Ghost Players Discovered</h3>
+            <button class="modal-close-btn" id="ghostPlayersCloseBtn">×</button>
+        </div>
+        <div class="modal-body" id="ghostPlayersBody">
+            <!-- Content will be loaded here -->
+        </div>
+    </div>
+</div>
 
 {% endblock %}
 
@@ -1322,6 +1334,13 @@
     const customMinuteInput = document.getElementById('custom-minute-input');
 
     let selectedFiles = [];
+
+    // Function to update process button state based on files and event selection
+    function updateProcessButtonState() {
+        const hasFiles = selectedFiles.length > 0;
+        const hasEvent = eventNameSelect.value && eventNameSelect.value !== '';
+        processBtn.disabled = !(hasFiles && hasEvent);
+    }
 
     // Click to browse
     uploadArea.addEventListener('click', () => {
@@ -1393,14 +1412,14 @@
 
         if (selectedFiles.length === 0) {
             imagesGallery.classList.remove('active');
-            processBtn.disabled = true;
             clearAllBtn.style.display = 'none';
+            updateProcessButtonState();
             return;
         }
 
         imagesGallery.classList.add('active');
-        processBtn.disabled = false;
         clearAllBtn.style.display = 'inline-block';
+        updateProcessButtonState();
 
         // Update count
         imageCount.textContent = `${selectedFiles.length} image${selectedFiles.length !== 1 ? 's' : ''}`;
@@ -1485,6 +1504,12 @@
     processBtn.addEventListener('click', async () => {
         if (selectedFiles.length === 0) return;
 
+        // Validate event selection
+        if (!eventNameSelect.value || eventNameSelect.value === '') {
+            alert('Please select an event from the dropdown before processing screenshots.');
+            return;
+        }
+
         // Show status section
         const statusSection = document.getElementById('statusSection');
         const resultsSection = document.getElementById('resultsSection');
@@ -1560,7 +1585,14 @@
                 formData.append('event_date', eventDate);
                 eventName = customEventNameInput.value.trim();
             } else {
-                eventName = eventNameSelect.value;
+                // Get the event date from the selected option's data attribute
+                const selectedOption = eventNameSelect.options[eventNameSelect.selectedIndex];
+
+                // Use event name and date from data attributes (which are always available)
+                if (selectedOption && selectedOption.dataset.eventName && selectedOption.dataset.eventDate) {
+                    eventName = selectedOption.dataset.eventName;
+                    formData.append('event_date', selectedOption.dataset.eventDate);
+                }
             }
             formData.append('event_name', eventName);
             formData.append('event_type', eventName);
@@ -1632,9 +1664,9 @@
                 selectedFiles = [];
                 updateGallery();
 
-                // Re-enable button
-                processBtn.disabled = true;
+                // Reset button text
                 processBtn.textContent = 'Process Attendance';
+                // Button state will be updated by updateGallery() -> updateProcessButtonState()
             }, 1000);
 
         } catch (error) {
@@ -1647,8 +1679,8 @@
             // Re-enable button after error
             setTimeout(() => {
                 statusSection.classList.remove('active');
-                processBtn.disabled = false;
                 processBtn.textContent = 'Process Attendance';
+                updateProcessButtonState();
                 alert('❌ Failed to process images. Please try again.');
             }, 3000);
         }
@@ -1871,6 +1903,10 @@
                 <p style="color: var(--text-color); opacity: 0.8; font-size: 0.9rem; text-align: center; margin-top: 1rem;">
                     High confidence records have been verified by 3+ independent sources, making them highly reliable.
                 </p>
+                <div style="text-align: center; margin-top: 1.5rem; display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap;">
+                    <button id="viewGhostPlayersBtn" class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.9rem;">👻 View Ghost Players</button>
+                    <button id="reconcileNamesBtn" class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.9rem;">🔄 Reconcile Names</button>
+                </div>
             `;
 
             if (totalRecords === 0) {
@@ -1878,6 +1914,19 @@
             }
 
             verificationContainer.innerHTML = verificationHTML;
+
+            // Attach event listeners to buttons after they're created
+            setTimeout(() => {
+                const viewGhostPlayersBtn = document.getElementById('viewGhostPlayersBtn');
+                if (viewGhostPlayersBtn) {
+                    viewGhostPlayersBtn.addEventListener('click', loadGhostPlayers);
+                }
+
+                const reconcileNamesBtn = document.getElementById('reconcileNamesBtn');
+                if (reconcileNamesBtn) {
+                    reconcileNamesBtn.addEventListener('click', reconcilePlayerNames);
+                }
+            }, 0);
 
         } catch (error) {
             console.error('Error loading dashboard data:', error);
@@ -2144,37 +2193,52 @@
 
             eventNameSelect.innerHTML = ''; // Clear existing options
 
-            if (data.success && data.events && data.events.length > 0) {
-                const nonArenaEvents = data.events.filter(event => !/arena/i.test(event.name));
-                const recentEvents = nonArenaEvents.slice(0, 5);
+            // Add default placeholder option
+            const placeholderOption = document.createElement('option');
+            placeholderOption.value = '';
+            placeholderOption.textContent = '-- Select Event --';
+            placeholderOption.disabled = true;
+            placeholderOption.selected = true;
+            eventNameSelect.appendChild(placeholderOption);
 
-                recentEvents.forEach(event => {
+            if (data.success && data.events && data.events.length > 0) {
+                // Filter out arena events and get latest 10
+                const nonArenaEvents = data.events.filter(event => !/arena/i.test(event.name));
+                const recentEvents = nonArenaEvents.slice(0, 10);
+
+                recentEvents.forEach((event, index) => {
                     const option = document.createElement('option');
                     const eventDate = new Date(event.date);
                     const dateString = `${(eventDate.getUTCMonth() + 1).toString().padStart(2, '0')}/${eventDate.getUTCDate().toString().padStart(2, '0')} ${eventDate.getUTCHours().toString().padStart(2, '0')}:${eventDate.getUTCMinutes().toString().padStart(2, '0')}`;
-                    
-                    option.value = event.name;
+
+                    // Use unique key combining name and date to avoid confusion with duplicate event names
+                    option.value = `${event.name}|${event.date}`;
+                    option.dataset.eventDate = event.date; // Store ISO date string
+                    option.dataset.eventName = event.name; // Store event name
                     let trimmedName = event.name.replace(/\s*Notification$|\s*Event!$/i, '').trim();
                     option.textContent = `${trimmedName} (${dateString})`;
                     eventNameSelect.appendChild(option);
                 });
 
-                eventNameSelect.innerHTML += '<option value="custom">Custom Date</option>';
-                
-                if (recentEvents.length > 0) {
-                    // Set the most recent event as the default
-                    eventNameSelect.value = recentEvents[0].name;
-                } else {
-                    eventNameSelect.value = 'custom';
-                }
+                // Add Custom Date option at the end
+                const customOption = document.createElement('option');
+                customOption.value = 'custom';
+                customOption.textContent = 'Custom Date';
+                eventNameSelect.appendChild(customOption);
             } else {
-                eventNameSelect.innerHTML = '<option value="custom">Custom Date</option>';
-                eventNameSelect.value = 'custom';
+                // If no events, still add custom option
+                const customOption = document.createElement('option');
+                customOption.value = 'custom';
+                customOption.textContent = 'Custom Date';
+                eventNameSelect.appendChild(customOption);
             }
         } catch (error) {
             console.error('Error loading past events:', error);
-            eventNameSelect.innerHTML = '<option value="custom">Custom Date</option>';
-            eventNameSelect.value = 'custom';
+            // On error, add custom option
+            const customOption = document.createElement('option');
+            customOption.value = 'custom';
+            customOption.textContent = 'Custom Date';
+            eventNameSelect.appendChild(customOption);
         }
         // Trigger change to ensure custom date container visibility is correct
         eventNameSelect.dispatchEvent(new Event('change'));
@@ -2183,6 +2247,9 @@
     eventNameSelect.addEventListener('change', () => {
         const isCustom = eventNameSelect.value === 'custom';
         customDateContainer.style.display = isCustom ? 'block' : 'none';
+
+        // Update process button state based on selection
+        updateProcessButtonState();
     });
 
     // Initialize Litepicker for custom date
@@ -2246,6 +2313,196 @@
         const minute = i.toString().padStart(2, '0');
         customMinuteInput.add(new Option(minute, minute));
     }
+
+    // ========================================
+    // Ghost Players Modal Logic
+    // ========================================
+    const ghostPlayersModal = document.getElementById('ghostPlayersModal');
+    const ghostPlayersCloseBtn = document.getElementById('ghostPlayersCloseBtn');
+    const ghostPlayersBody = document.getElementById('ghostPlayersBody');
+
+    // Close modal
+    ghostPlayersCloseBtn.addEventListener('click', () => {
+        ghostPlayersModal.classList.remove('active');
+    });
+
+    ghostPlayersModal.addEventListener('click', (e) => {
+        if (e.target === ghostPlayersModal) {
+            ghostPlayersModal.classList.remove('active');
+        }
+    });
+
+    // Reconcile player names based on nickname changes
+    async function reconcilePlayerNames() {
+        if (!confirm('This will update OCR records to match current player names. Continue?')) {
+            return;
+        }
+
+        try {
+            const reconcileBtn = document.getElementById('reconcileNamesBtn');
+            const originalText = reconcileBtn.textContent;
+            reconcileBtn.disabled = true;
+            reconcileBtn.textContent = '⏳ Processing...';
+
+            const response = await fetch('/api/reconcile-player-names', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (data.success) {
+                // Show results in an alert
+                let message = `✓ Reconciliation Complete!\n\n`;
+                message += `Updated Records: ${data.updated_count}\n`;
+
+                if (data.updates && data.updates.length > 0) {
+                    // Deduplicate updates by old_name -> new_name mapping
+                    const uniqueUpdates = {};
+                    data.updates.forEach(update => {
+                        const key = `${update.old_name} → ${update.new_name}`;
+                        if (!uniqueUpdates[key]) {
+                            uniqueUpdates[key] = update;
+                        }
+                    });
+
+                    const uniqueUpdatesList = Object.values(uniqueUpdates);
+                    message += `\nChanges:\n`;
+                    uniqueUpdatesList.slice(0, 10).forEach(update => {
+                        message += `  • ${update.old_name} → ${update.new_name}\n`;
+                    });
+                    if (uniqueUpdatesList.length > 10) {
+                        message += `  ... and ${uniqueUpdatesList.length - 10} more`;
+                    }
+                }
+
+                alert(message);
+                // Reload dashboard to reflect changes
+                loadDashboardData();
+            } else {
+                throw new Error(data.error || 'Failed to reconcile player names');
+            }
+        } catch (error) {
+            console.error('Error reconciling player names:', error);
+            alert(`❌ Error: ${error.message}`);
+        } finally {
+            const reconcileBtn = document.getElementById('reconcileNamesBtn');
+            if (reconcileBtn) {
+                reconcileBtn.disabled = false;
+                reconcileBtn.textContent = '🔄 Reconcile Names';
+            }
+        }
+    }
+
+    // Delete a ghost player
+    async function deleteGhostPlayer(playerName) {
+        try {
+            const response = await fetch('/api/delete-ghost-player', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ player_name: playerName })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (data.success) {
+                // Show success message
+                alert(`✓ Deleted ${data.deleted_count} record(s) for ${playerName}`);
+                // Reload the ghost players list
+                await loadGhostPlayers();
+            } else {
+                throw new Error(data.error || 'Failed to delete ghost player');
+            }
+        } catch (error) {
+            console.error('Error deleting ghost player:', error);
+            alert(`❌ Error deleting ghost player: ${error.message}`);
+        }
+    }
+
+    // Load and display ghost players
+    async function loadGhostPlayers() {
+        ghostPlayersBody.innerHTML = '<div style="text-align: center; padding: 2rem;"><div class="status-spinner"></div><p>Loading ghost players...</p></div>';
+        ghostPlayersModal.classList.add('active');
+
+        try {
+            const response = await fetch('/api/ghost-players');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+
+            if (!data.success) {
+                throw new Error(data.error || 'Failed to load ghost players');
+            }
+
+            let ghostHTML = `
+                <div style="margin-bottom: 1rem;">
+                    <p style="color: var(--text-color); opacity: 0.8; margin: 0;">
+                        <strong>Total Ghost Players: ${data.total_ghost_players}</strong>
+                    </p>
+                    <p style="color: var(--text-color); opacity: 0.7; font-size: 0.9rem; margin: 0.5rem 0 0 0;">
+                        These players appear in screenshots but don't match any users in the database.
+                    </p>
+                </div>
+            `;
+
+            if (data.ghost_players && data.ghost_players.length > 0) {
+                ghostHTML += '<div style="overflow-x: auto;"><table class="results-table" style="min-width: 100%;"><thead><tr>';
+                ghostHTML += '<th>Alliance</th><th>Player Name</th><th>Times Seen</th><th>Events</th><th>Avg Damage</th><th>Total Damage</th><th>Last Seen</th><th>Action</th></tr></thead><tbody>';
+
+                data.ghost_players.forEach(player => {
+                    const lastSeen = new Date(player.last_seen);
+                    const lastSeenStr = `${(lastSeen.getUTCMonth() + 1).toString().padStart(2, '0')}/${lastSeen.getUTCDate().toString().padStart(2, '0')} ${lastSeen.getUTCHours().toString().padStart(2, '0')}:${lastSeen.getUTCMinutes().toString().padStart(2, '0')}`;
+
+                    ghostHTML += `
+                        <tr>
+                            <td><strong>${player.alliance_tag}</strong></td>
+                            <td>${player.player_name}</td>
+                            <td>${player.times_seen}</td>
+                            <td>${player.event_count}</td>
+                            <td>${player.avg_damage > 0 ? Math.round(player.avg_damage).toLocaleString() : 'N/A'}</td>
+                            <td><strong>${player.total_damage.toLocaleString()}</strong></td>
+                            <td>${lastSeenStr}</td>
+                            <td><button class="delete-ghost-btn" data-player-name="${player.full_name}" style="padding: 0.25rem 0.5rem; font-size: 0.8rem; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">Delete</button></td>
+                        </tr>
+                    `;
+                });
+
+                ghostHTML += '</tbody></table></div>';
+            } else {
+                ghostHTML += '<p style="color: var(--text-color); opacity: 0.6; text-align: center; padding: 2rem;">No ghost players discovered yet!</p>';
+            }
+
+            ghostPlayersBody.innerHTML = ghostHTML;
+
+            // Attach delete button event listeners
+            document.querySelectorAll('.delete-ghost-btn').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const playerName = btn.getAttribute('data-player-name');
+                    if (confirm(`Are you sure you want to delete all records for ${playerName}?`)) {
+                        await deleteGhostPlayer(playerName);
+                    }
+                });
+            });
+
+        } catch (error) {
+            console.error('Error loading ghost players:', error);
+            ghostPlayersBody.innerHTML = `<p style="color: #dc3545;">Could not load ghost players: ${error.message}</p>`;
+        }
+    }
+
 
 </script>
 {% endblock %}

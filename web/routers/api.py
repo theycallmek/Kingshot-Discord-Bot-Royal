@@ -24,6 +24,7 @@ import asyncio
 import hashlib
 import os
 import traceback
+import re
 
 
 def parse_player_name(player_name: str) -> Tuple[str, str]:
@@ -44,16 +45,88 @@ def parse_player_name(player_name: str) -> Tuple[str, str]:
     return "N/A", player_name.strip()
 
 
+def reconcile_ocr_player_names(
+    cache_session: Session,
+    changes_session: Session,
+    users_session: Session,
+) -> Tuple[int, List[dict]]:
+    """
+    Reconciles OCR player names with current usernames based on nickname changes.
+
+    Returns:
+        A tuple of (updated_count, updates_log)
+    """
+    # Get all users to build current name mapping
+    all_users = users_session.exec(select(User)).all()
+    user_map = {user.fid: user.nickname for user in all_users}
+
+    # Get all nickname changes
+    nickname_changes = changes_session.exec(select(NicknameChange)).all()
+
+    # Build a mapping of old names -> list of (user_fid, current_name)
+    old_name_to_user = {}
+    for change in nickname_changes:
+        # Extract the username without alliance tag for matching
+        old_username = re.sub(r"\[.*?\]", "", change.old_nickname).strip().lower()
+        current_name = user_map.get(change.fid, "")
+
+        if old_username and current_name:
+            if old_username not in old_name_to_user:
+                old_name_to_user[old_username] = []
+            old_name_to_user[old_username].append((change.fid, current_name))
+
+    # Get all OCR records
+    all_ocr_records = cache_session.exec(select(OCREventData)).all()
+
+    updated_count = 0
+    updates_log = []
+
+    for record in all_ocr_records:
+        # Extract username without alliance tag
+        ocr_username = re.sub(r"\[.*?\]", "", record.player_name).strip().lower()
+
+        # Check if this is an old name
+        if ocr_username in old_name_to_user:
+            fid, current_name = old_name_to_user[ocr_username][0]
+
+            # current_name from the User table already includes the alliance tag
+            # (e.g., "[DOA]Hop"), so we use it directly
+            new_name = current_name
+
+            # Only update if the current name is different
+            if record.player_name != new_name:
+                old_name = record.player_name
+                record.player_name = new_name
+
+                # If we're matching to a user, update the FID
+                if record.player_fid is None or record.player_fid == "0000000000":
+                    record.player_fid = str(fid)
+
+                cache_session.add(record)
+                updated_count += 1
+                updates_log.append({
+                    "old_name": old_name,
+                    "new_name": new_name,
+                    "fid": str(fid)
+                })
+
+    # Commit all changes
+    cache_session.commit()
+
+    return updated_count, updates_log
+
+
 from web.core.database import (
     get_attendance_session,
     get_cache_session,
     get_users_session,
     get_beartime_session,
+    get_changes_session,
     users_engine,
     cache_engine,
 )
 from web.core.config import API_SECRET
-from web.models import BearNotification, BearNotificationEmbed, NotificationDays, User
+from web.models import BearNotification, BearNotificationEmbed, NotificationDays, User, NicknameChange
 from web.ocr_models import OCREventData, UserAvatarCache
 from web.services.ocr import (
     get_ocr_reader,
@@ -125,15 +198,21 @@ class EventCreate(BaseModel):
     embed_mention_message: Optional[str] = None
 
 
+class DeleteGhostPlayerRequest(BaseModel):
+    player_name: str
+
+
 @router.post("/api/process-attendance")
 async def process_attendance(
     files: List[UploadFile] = File(...),
     event_name: str = Form(...),
     event_type: str = Form(DEFAULT_EVENT_TYPE),
+    event_date: Optional[str] = Form(None),
     authenticated: bool = Depends(is_authenticated),
     users_session: Session = Depends(get_users_session),
     cache_session: Session = Depends(get_cache_session),
     attendance_session: Session = Depends(get_attendance_session),
+    changes_session: Session = Depends(get_changes_session),
 ):
     """Processes uploaded screenshots for attendance tracking."""
     if not authenticated:
@@ -156,10 +235,19 @@ async def process_attendance(
             # Initialize OCR reader
             reader = get_ocr_reader()
 
-            # Create OCR session ID
-            event_date = datetime.now()
+            # Create OCR session ID - use provided event_date or current time
+            event_datetime = datetime.now()
+            if event_date:
+                try:
+                    # Parse ISO format date string (e.g., "2025-10-31T14:30:00Z")
+                    # Convert to UTC and make naive to ensure consistent timezone handling in SQLite
+                    parsed_dt = datetime.fromisoformat(event_date.replace("Z", "+00:00"))
+                    event_datetime = parsed_dt.astimezone(pytz.utc).replace(tzinfo=None)
+                except (ValueError, AttributeError):
+                    event_datetime = datetime.now()
+
             session_id = (
-                f"{event_name.replace(' ', '_')}_{event_date.strftime('%Y%m%d_%H%M%S')}"
+                f"{event_name.replace(' ', '_')}_{event_datetime.strftime('%Y%m%d_%H%M%S')}"
             )
 
             # Process each image
@@ -195,10 +283,23 @@ async def process_attendance(
                 session_id,
                 event_name,
                 event_type,
-                event_date,
+                event_datetime,
                 users_session,
                 cache_session,
             )
+
+            # Commit cache session to save OCREventData and OCRPlayerMapping records
+            cache_session.commit()
+
+            # Reconcile player names with current usernames based on nickname changes
+            try:
+                reconciled_count, _ = reconcile_ocr_player_names(
+                    cache_session, changes_session, users_session
+                )
+            except Exception as e:
+                # Log reconciliation errors but don't fail the upload
+                print(f"[WARNING] Error during name reconciliation: {e}")
+                reconciled_count = 0
 
             # Mark attendance for both matched and ghost players
             attendance_marked = mark_attendance_from_scores(
@@ -271,11 +372,20 @@ async def get_dashboard_data(
         for event in recent_events_data:
             session_id = event.processing_session
             if session_id not in sessions_dict:
+                # Trim "Notification" and "Event!" from event name
+                event_name = event.event_name
+                if event_name.endswith(" Notification"):
+                    event_name = event_name[:-len(" Notification")]
+                if event_name.endswith(" Event!"):
+                    event_name = event_name[:-len(" Event!")]
+
+                # Ensure event_date has UTC timezone for proper JavaScript interpretation
+                event_date_utc = event.event_date.replace(tzinfo=pytz.utc) if event.event_date.tzinfo is None else event.event_date
                 sessions_dict[session_id] = {
                     "session_id": session_id,
-                    "event_name": event.event_name,
+                    "event_name": event_name,
                     "event_type": event.event_type,
-                    "event_date": event.event_date.isoformat(),
+                    "event_date": event_date_utc.isoformat(),
                     "player_count": 0,
                     "verified_count": 0,
                     "total_verifications": 0,
@@ -287,7 +397,7 @@ async def get_dashboard_data(
             sessions_dict[session_id]["total_verifications"] += event.verification_count
 
         recent_sessions = sorted(
-            sessions_dict.values(), key=lambda x: x["extracted_at"], reverse=True
+            sessions_dict.values(), key=lambda x: x["event_date"], reverse=True
         )[:10]
 
         # Get top players by damage (across all events in last 30 days)
@@ -508,38 +618,257 @@ async def get_past_events(
     authenticated: bool = Depends(is_authenticated),
     beartime_session: Session = Depends(get_beartime_session),
 ):
-    """Gets a list of past events."""
+    """Gets a list of the 10 most recently passed events for the attendance dropdown.
+
+    Returns past event instances including those from repeating events,
+    similar to how the calendar generates event instances.
+    """
     if not authenticated:
         return JSONResponse({"error": "Not authenticated"}, status_code=401)
 
     try:
-        now = datetime.now(pytz.utc)
-        past_events_from_db = beartime_session.exec(
+        # Fetch all events from the database
+        all_events = beartime_session.exec(
             select(BearNotification)
-            .options(selectinload(BearNotification.embeds))
-            .where(BearNotification.next_notification < now)
-            .order_by(BearNotification.next_notification.desc())
-            .limit(20)
+            .options(selectinload(BearNotification.embeds), selectinload(BearNotification.notification_days))
+            .limit(500)
         ).all()
 
-        unique_events = {}
-        for event in past_events_from_db:
-            if event.embeds and event.embeds[0].title:
-                title = event.embeds[0].title
-                if title not in unique_events:
-                    unique_events[title] = event.next_notification
+        now = datetime.now()
+        if now.tzinfo is None:
+            now = pytz.utc.localize(now)
 
-        sorted_events = sorted(
-            unique_events.items(), key=lambda item: item[1], reverse=True
+        past_instances = []
+
+        for event in all_events:
+            if not event.embeds or not event.embeds[0].title:
+                continue
+
+            title = event.embeds[0].title
+
+            # Trim "Notification" and "Event!" from title
+            trimmed_title = title
+            if trimmed_title.endswith(" Notification"):
+                trimmed_title = trimmed_title[:-len(" Notification")]
+            if trimmed_title.endswith(" Event!"):
+                trimmed_title = trimmed_title[:-len(" Event!")]
+
+            # Exclude "Arena" events
+            if "arena" in trimmed_title.lower():
+                continue
+
+            # Make sure next_notification has timezone info
+            occurrence = event.next_notification
+            if occurrence.tzinfo is None:
+                occurrence = pytz.utc.localize(occurrence)
+
+            # Non-repeating events: just check if in the past
+            if not event.repeat_enabled:
+                if occurrence < now:
+                    past_instances.append({
+                        "name": trimmed_title,
+                        "date": occurrence.isoformat(),
+                    })
+            else:
+                # Repeating events: calculate all past instances
+                if str(event.repeat_minutes).isdigit() and int(event.repeat_minutes) > 0:
+                    # Fixed interval repeating event
+                    repeat_minutes = int(event.repeat_minutes)
+
+                    # Calculate backward from next_notification to find past instances
+                    current_occurrence = occurrence
+
+                    # Generate all past instances (go back up to 6 months)
+                    six_months_ago = now - timedelta(days=180)
+                    while current_occurrence > six_months_ago:
+                        if current_occurrence < now:
+                            past_instances.append({
+                                "name": trimmed_title,
+                                "date": current_occurrence.isoformat(),
+                            })
+                        current_occurrence -= timedelta(minutes=repeat_minutes)
+
+                elif event.repeat_minutes == "fixed" and event.notification_days:
+                    # Fixed weekday repeating event
+                    try:
+                        weekdays = set(map(int, event.notification_days.weekday.split("|")))
+
+                        # Go back 6 months and find all matching weekdays
+                        six_months_ago = now - timedelta(days=180)
+                        check_date = now.date()
+
+                        while check_date >= six_months_ago.date():
+                            if check_date.weekday() in weekdays:
+                                # Create datetime with the event's time
+                                event_time = occurrence.time()
+                                past_occurrence = datetime.combine(
+                                    check_date,
+                                    event_time,
+                                    tzinfo=occurrence.tzinfo,
+                                )
+                                if past_occurrence < now:
+                                    past_instances.append({
+                                        "name": trimmed_title,
+                                        "date": past_occurrence.isoformat(),
+                                    })
+                            check_date -= timedelta(days=1)
+                    except (ValueError, TypeError, AttributeError):
+                        pass
+
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_instances = []
+        for instance in past_instances:
+            key = (instance["name"], instance["date"])
+            if key not in seen:
+                seen.add(key)
+                unique_instances.append(instance)
+
+        # Sort by date (most recent first)
+        unique_instances.sort(key=lambda x: x["date"], reverse=True)
+
+        # Return the 10 most recent
+        top_10 = unique_instances[:10]
+        return JSONResponse({"success": True, "events": top_10})
+
+    except Exception as e:
+        print(traceback.format_exc())
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+@router.get("/api/ghost-players")
+async def get_ghost_players(
+    authenticated: bool = Depends(is_authenticated),
+    cache_session: Session = Depends(get_cache_session),
+):
+    """Gets a list of all discovered ghost players (unmatched OCR detections)."""
+    if not authenticated:
+        return JSONResponse({"error": "Not authenticated"}, status_code=401)
+
+    try:
+        # Get all unique ghost players (player_fid is None or "0000000000")
+        ghost_players_query = (
+            select(OCREventData)
+            .where(
+                (OCREventData.player_fid.is_(None)) | (OCREventData.player_fid == "0000000000")
+            )
+            .order_by(OCREventData.extracted_at.desc())
+        )
+        ghost_records = cache_session.exec(ghost_players_query).all()
+
+        # Group by player name to get unique ghost players with stats
+        ghost_players_dict = {}
+        for record in ghost_records:
+            player_name = record.player_name
+            if player_name not in ghost_players_dict:
+                alliance_tag, username = parse_player_name(player_name)
+                ghost_players_dict[player_name] = {
+                    "player_name": username,
+                    "alliance_tag": alliance_tag,
+                    "full_name": player_name,
+                    "times_seen": 0,
+                    "last_seen_dt": None,
+                    "avg_damage": 0,
+                    "total_damage": 0,
+                    "event_count": 0,
+                }
+
+            ghost_players_dict[player_name]["times_seen"] += 1
+            if record.damage_points:
+                ghost_players_dict[player_name]["total_damage"] += record.damage_points
+            if not ghost_players_dict[player_name]["last_seen_dt"] or record.extracted_at > ghost_players_dict[player_name]["last_seen_dt"]:
+                ghost_players_dict[player_name]["last_seen_dt"] = record.extracted_at
+            ghost_players_dict[player_name]["event_count"] += 1
+
+        # Calculate averages and convert to list
+        ghost_players_list = list(ghost_players_dict.values())
+        for player in ghost_players_list:
+            if player["event_count"] > 0:
+                player["avg_damage"] = player["total_damage"] / player["event_count"]
+            # Convert datetime to ISO string
+            if player["last_seen_dt"]:
+                player["last_seen"] = player["last_seen_dt"].isoformat()
+            else:
+                player["last_seen"] = None
+            # Remove the datetime object from response
+            del player["last_seen_dt"]
+
+        # Sort by times_seen (most frequent first)
+        ghost_players_list.sort(key=lambda x: x["times_seen"], reverse=True)
+
+        return JSONResponse({
+            "success": True,
+            "total_ghost_players": len(ghost_players_list),
+            "ghost_players": ghost_players_list
+        })
+
+    except Exception as e:
+        print(traceback.format_exc())
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+@router.post("/api/reconcile-player-names")
+async def reconcile_player_names(
+    authenticated: bool = Depends(is_authenticated),
+    cache_session: Session = Depends(get_cache_session),
+    changes_session: Session = Depends(get_changes_session),
+    users_session: Session = Depends(get_users_session),
+):
+    """Reconciles OCR player names with current usernames based on nickname changes."""
+    if not authenticated:
+        return JSONResponse({"error": "Not authenticated"}, status_code=401)
+
+    try:
+        # Use the helper function to reconcile names
+        updated_count, updates_log = reconcile_ocr_player_names(
+            cache_session, changes_session, users_session
         )
 
-        recent_events = sorted_events[:5]
+        return JSONResponse({
+            "success": True,
+            "updated_count": updated_count,
+            "updates": updates_log,
+            "message": f"Reconciled {updated_count} OCR records with current player names"
+        })
 
-        events_list = [
-            {"name": title, "date": dt.isoformat()} for title, dt in recent_events
-        ]
+    except Exception as e:
+        print(traceback.format_exc())
+        return JSONResponse({"error": str(e)}, status_code=500)
 
-        return JSONResponse({"success": True, "events": events_list})
+
+@router.post("/api/delete-ghost-player")
+async def delete_ghost_player(
+    authenticated: bool = Depends(is_authenticated),
+    cache_session: Session = Depends(get_cache_session),
+    data: DeleteGhostPlayerRequest = Body(...),
+):
+    """Deletes all OCREventData records for a ghost player."""
+    if not authenticated:
+        return JSONResponse({"error": "Not authenticated"}, status_code=401)
+
+    try:
+        player_name = data.player_name
+        # Delete all records for this ghost player
+        records_to_delete = cache_session.exec(
+            select(OCREventData)
+            .where(OCREventData.player_name == player_name)
+            .where(
+                (OCREventData.player_fid.is_(None)) | (OCREventData.player_fid == "0000000000")
+            )
+        ).all()
+
+        deleted_count = 0
+        for record in records_to_delete:
+            cache_session.delete(record)
+            deleted_count += 1
+
+        cache_session.commit()
+
+        return JSONResponse({
+            "success": True,
+            "message": f"Deleted {deleted_count} record(s) for {player_name}",
+            "deleted_count": deleted_count
+        })
 
     except Exception as e:
         print(traceback.format_exc())
@@ -840,9 +1169,9 @@ async def update_event(
             int(data.embed_color.lstrip("#"), 16) if data.embed_color else None
         )
         embed.footer = data.embed_footer
-        embed.author = data.embed_author
-        embed.image_url = data.embed_image_url
-        embed.thumbnail_url = data.embed_thumbnail_url
+        embed.author = data.author
+        embed.image_url = data.image_url
+        embed.thumbnail_url = data.thumbnail_url
         embed.mention_message = (
             data.embed_mention_message if data.embed_mention_message else None
         )

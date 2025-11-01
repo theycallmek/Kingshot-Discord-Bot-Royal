@@ -147,14 +147,24 @@ async def read_events(
     authenticated: bool = Depends(is_authenticated),
     beartime_session: Session = Depends(get_beartime_session),
     users_session: Session = Depends(get_users_session),
+    year: int = None,
+    month: int = None,
 ):
     """Serves the event calendar page."""
     if not authenticated:
         return RedirectResponse(url="/login", status_code=303)
 
     today = date.today()
+
+    # Use provided year/month or default to current
+    display_year = year if year is not None else today.year
+    display_month = month if month is not None else today.month
+
+    # Create a date object for the displayed month
+    display_date = date(display_year, display_month, 1)
+
     cal = calendar.Calendar()
-    month_days = cal.monthdatescalendar(today.year, today.month)
+    month_days = cal.monthdatescalendar(display_year, display_month)
 
     calendar_start_date = month_days[0][0]
     calendar_end_date = month_days[-1][-1]
@@ -195,28 +205,27 @@ async def read_events(
         if occurrence.tzinfo is None:
             occurrence = pytz.utc.localize(occurrence)
 
-        if event.repeat_enabled and occurrence.date() < calendar_start_date:
+        # For repeating events, always calculate backward/forward to find the first
+        # occurrence at or after calendar_start_date
+        if event.repeat_enabled:
             if str(event.repeat_minutes).isdigit() and int(event.repeat_minutes) > 0:
                 repeat_minutes = int(event.repeat_minutes)
-                time_diff_minutes = (
-                    datetime.combine(calendar_start_date, time.min, tzinfo=pytz.utc)
-                    - occurrence
-                ).total_seconds() / 60
-                if time_diff_minutes > 0:
-                    periods_to_jump = int(time_diff_minutes / repeat_minutes)
-                    occurrence += timedelta(minutes=repeat_minutes * periods_to_jump)
+
+                # Calculate backward if next_notification is after calendar_start_date
+                while occurrence.date() > calendar_start_date:
+                    occurrence -= timedelta(minutes=repeat_minutes)
+
+                # Now move forward to first occurrence at or after calendar_start_date
                 while occurrence.date() < calendar_start_date:
                     occurrence += timedelta(minutes=repeat_minutes)
 
             elif event.repeat_minutes == "fixed" and event.notification_days:
                 weekdays = set(map(int, event.notification_days.weekday.split("|")))
+                # Find the first occurrence within the calendar range
                 day_iter = calendar_start_date
                 found = False
                 while day_iter <= calendar_end_date:
-                    if (
-                        day_iter.weekday() in weekdays
-                        and day_iter >= event.next_notification.date()
-                    ):
+                    if day_iter.weekday() in weekdays and day_iter >= event.next_notification.date():
                         occurrence = datetime.combine(
                             day_iter,
                             event.next_notification.time(),
@@ -228,8 +237,13 @@ async def read_events(
                 if not found:
                     continue
             else:
+                # No valid repeat pattern, skip this event
                 continue
+        elif occurrence.date() < calendar_start_date or occurrence.date() > calendar_end_date:
+            # Non-repeating event outside calendar range
+            continue
 
+        # Now add all occurrences within the calendar range
         while occurrence.date() <= calendar_end_date:
             clone = base_event_model.model_copy(deep=True)
             clone.next_notification = occurrence
@@ -259,6 +273,19 @@ async def read_events(
             else:
                 break
 
+    # Calculate previous and next month
+    prev_month = display_month - 1
+    prev_year = display_year
+    if prev_month < 1:
+        prev_month = 12
+        prev_year -= 1
+
+    next_month = display_month + 1
+    next_year = display_year
+    if next_month > 12:
+        next_month = 1
+        next_year += 1
+
     return templates.TemplateResponse(
         "events.html",
         {
@@ -266,6 +293,11 @@ async def read_events(
             "month_days": month_days,
             "events_map": events_map,
             "today": today,
+            "display_date": display_date,
+            "prev_year": prev_year,
+            "prev_month": prev_month,
+            "next_year": next_year,
+            "next_month": next_month,
         },
     )
 
