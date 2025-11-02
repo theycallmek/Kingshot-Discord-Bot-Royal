@@ -34,7 +34,7 @@ class BearTrap(commands.Cog):
                 notification_type INTEGER NOT NULL,
                 mention_type TEXT NOT NULL,
                 repeat_enabled INTEGER NOT NULL DEFAULT 0,
-                repeat_minutes INTEGER DEFAULT 0,
+                repeat_minutes TEXT DEFAULT '0',
                 is_enabled INTEGER DEFAULT 1,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 created_by INTEGER NOT NULL,
@@ -253,6 +253,16 @@ class BearTrap(commands.Cog):
              notification_type, mention_type, repeat_enabled, repeat_minutes,
              is_enabled, created_at, created_by, last_notification,
              next_notification) = notification
+
+            # Normalize repeat_minutes: convert string to int if possible
+            if isinstance(repeat_minutes, str):
+                if repeat_minutes == "fixed":
+                    repeat_minutes = "fixed"
+                else:
+                    try:
+                        repeat_minutes = int(repeat_minutes)
+                    except (ValueError, TypeError):
+                        repeat_minutes = 0
 
             weekly_repeat_days = []
             if repeat_enabled and repeat_minutes == 0:
