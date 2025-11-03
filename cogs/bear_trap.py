@@ -656,12 +656,12 @@ class BearTrap(commands.Cog):
     async def get_notifications(self, guild_id: int) -> list:
         try:
             self.cursor.execute("""
-                SELECT * FROM bear_notifications 
-                WHERE guild_id = ? 
-                ORDER BY 
-                    CASE 
-                        WHEN next_notification >= CURRENT_TIMESTAMP THEN 0 
-                        ELSE 1 
+                SELECT * FROM bear_notifications
+                WHERE guild_id = ?
+                ORDER BY
+                    CASE
+                        WHEN next_notification >= CURRENT_TIMESTAMP THEN 0
+                        ELSE 1
                     END,
                     next_notification
             """, (guild_id,))
