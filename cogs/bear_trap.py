@@ -2278,6 +2278,17 @@ class BearTrapView(discord.ui.View):
                         mention_display = "No mention"
 
                     repeat_minutes = selected_notif[10]
+
+                    # Normalize repeat_minutes: convert string to int if possible
+                    if isinstance(repeat_minutes, str):
+                        if repeat_minutes == "fixed":
+                            repeat_minutes = "fixed"
+                        else:
+                            try:
+                                repeat_minutes = int(repeat_minutes)
+                            except (ValueError, TypeError):
+                                repeat_minutes = 0
+
                     time_units = [
                         ("month", 43200),
                         ("week", 10080),
