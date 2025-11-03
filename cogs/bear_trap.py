@@ -83,6 +83,63 @@ class BearTrap(commands.Cog):
         except sqlite3.OperationalError:
             self.cursor.execute("ALTER TABLE bear_notification_embeds ADD COLUMN mention_message TEXT")
 
+        # Migration: Change repeat_minutes from INTEGER to TEXT
+        try:
+            self.cursor.execute("PRAGMA table_info(bear_notifications)")
+            columns = self.cursor.fetchall()
+            repeat_minutes_col = next((col for col in columns if col[1] == 'repeat_minutes'), None)
+
+            if repeat_minutes_col and repeat_minutes_col[2] == 'INTEGER':
+                # Enable foreign keys before migration
+                self.cursor.execute("PRAGMA foreign_keys=ON")
+
+                # Create a new table with the correct schema
+                self.cursor.execute("""
+                    CREATE TABLE bear_notifications_new (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        guild_id INTEGER NOT NULL,
+                        channel_id INTEGER NOT NULL,
+                        hour INTEGER NOT NULL,
+                        minute INTEGER NOT NULL,
+                        timezone TEXT NOT NULL,
+                        description TEXT NOT NULL,
+                        notification_type INTEGER NOT NULL,
+                        mention_type TEXT NOT NULL,
+                        repeat_enabled INTEGER NOT NULL DEFAULT 0,
+                        repeat_minutes TEXT DEFAULT '0',
+                        is_enabled INTEGER DEFAULT 1,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        created_by INTEGER NOT NULL,
+                        last_notification TIMESTAMP,
+                        next_notification TIMESTAMP
+                    )
+                """)
+
+                # Copy data from old table to new table, converting repeat_minutes to TEXT
+                self.cursor.execute("""
+                    INSERT INTO bear_notifications_new
+                    SELECT id, guild_id, channel_id, hour, minute, timezone, description,
+                           notification_type, mention_type, repeat_enabled,
+                           CAST(repeat_minutes AS TEXT), is_enabled, created_at,
+                           created_by, last_notification, next_notification
+                    FROM bear_notifications
+                """)
+
+                # Drop the old table
+                self.cursor.execute("DROP TABLE bear_notifications")
+
+                # Rename the new table to the original name
+                self.cursor.execute("ALTER TABLE bear_notifications_new RENAME TO bear_notifications")
+
+                print("Migration completed: Changed repeat_minutes from INTEGER to TEXT")
+        except Exception as e:
+            print(f"Migration error (non-critical): {e}")
+            try:
+                # Rollback migration if it failed
+                self.cursor.execute("DROP TABLE IF EXISTS bear_notifications_new")
+            except:
+                pass
+
         self.conn.commit()
 
     async def cog_load(self):
